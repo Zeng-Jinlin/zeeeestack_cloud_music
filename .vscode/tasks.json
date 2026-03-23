@@ -1,0 +1,27 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Build Backend",
+      "type": "shell",
+      "command": "cd backend; ./gradlew build -x test",
+      "windows": {
+        "command": "cd backend; .\\gradlew.bat build -x test"
+      },
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Install Frontend Dependencies",
+      "type": "shell",
+      "command": "cd frontend; npm install",
+      "group": "build",
+      "problemMatcher": []
+    },
+    {
+      "label": "Build All",
+      "dependsOn": ["Build Backend", "Install Frontend Dependencies"],
+      "group": "build"
+    }
+  ]
+}

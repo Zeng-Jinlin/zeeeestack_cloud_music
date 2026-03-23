@@ -1,0 +1,8 @@
+server:
+  port: 8080
+
+app:
+  music:
+    directory: ../music-files
+  security:
+    key-rotation-interval-days: 7
