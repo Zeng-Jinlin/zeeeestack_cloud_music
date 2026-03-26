@@ -13,7 +13,7 @@ if errorlevel 1 (
 
 echo.
 echo Installing Frontend Dependencies...
-cd ..\frontend
+cd ..\frontend-uniapp
 if not exist "node_modules" (
     call npm install
     if errorlevel 1 (
@@ -25,14 +25,14 @@ if not exist "node_modules" (
 
 echo.
 echo Starting Backend in background...
-start "Backend" cmd /k "cd ..\backend && gradlew.bat bootRun"
+start "Backend" cmd /k "cd ..\backend && gradlew.bat bootRun --console=plain"
 
 echo Waiting for backend to start...
 timeout /t 10 /nobreak >nul
 
 echo.
 echo Starting Frontend...
-start "Frontend" cmd /k "cd ..\frontend && npm run dev"
+start "Frontend" cmd /k "cd ..\frontend-uniapp && npm run dev:h5"
 
 echo.
 echo Both services are starting!

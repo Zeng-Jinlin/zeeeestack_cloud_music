@@ -13,7 +13,7 @@ fi
 
 echo ""
 echo "Installing Frontend Dependencies..."
-cd ../frontend
+cd ../frontend-uniapp
 if [ ! -d "node_modules" ]; then
     npm install
     if [ $? -ne 0 ]; then
@@ -25,7 +25,7 @@ fi
 echo ""
 echo "Starting Backend..."
 cd ../backend
-./gradlew bootRun &
+./gradlew bootRun --console=plain &
 BACKEND_PID=$!
 
 echo "Waiting for backend to start..."
@@ -33,8 +33,8 @@ sleep 10
 
 echo ""
 echo "Starting Frontend..."
-cd ../frontend
-npm run dev &
+cd ../frontend-uniapp
+npm run dev:h5 &
 FRONTEND_PID=$!
 
 echo ""

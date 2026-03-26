@@ -1,6 +1,9 @@
 server:
   port: 8080
 
+spring:
+  main:
+    lazy-initialization: true
 app:
   music:
     music-directory: ../music/music-files
