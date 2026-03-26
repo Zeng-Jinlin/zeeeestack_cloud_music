@@ -1,0 +1,45 @@
+
+security-key.dat
+music/
+backend/build/
+backend/.gradle/
+backend/.idea/
+frontend/node_modules/
+frontend/dist/
+.DS_Store
+Thumbs.db
+*.log
+*.tmp
+*.swp
+*.swo
+
+# --------------
+# Trae 相关
+# --------------
+# 保留团队共享配置
+!.trae/
+!.trae/settings.json
+!.trae/rules/
+!.trae/skills/
+!.trae/agents/
+!.trae/mcp.json
+
+# 忽略本地/临时
+.trae/settings.local.json
+.trae/*.local.json
+.trae/.ignore
+.trae/cache/
+.trae/logs/
+.trae/tmp/
+
+# --------------
+# VSCode 相关
+# --------------
+!.vscode/
+!.vscode/extensions.json
+!.vscode/settings.json
+.vscode/*.local.json
+.vscode/launch.json
+.vscode/*.code-snippets
+
+
