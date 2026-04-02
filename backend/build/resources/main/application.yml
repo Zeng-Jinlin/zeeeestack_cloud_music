@@ -1,0 +1,12 @@
+server:
+  port: 8080
+
+spring:
+  main:
+    lazy-initialization: true
+app:
+  music:
+    music-directory: ../music/music-files
+    cover-directory: ../music/music-cover
+  security:
+    key-rotation-interval-days: 7
