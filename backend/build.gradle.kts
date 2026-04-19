@@ -7,7 +7,7 @@ plugins {
     kotlin("plugin.spring") version "1.9.20"
 }
 
-group = "top.zeeeestack"
+group = "com.zeeeestack"
 version = "1.0.0"
 
 java {
@@ -15,15 +15,15 @@ java {
 }
 
 repositories {
-    maven { url = uri("https://maven.aliyun.com/repository/public") }
-    maven { url = uri("https://maven.aliyun.com/repository/spring") }
     mavenCentral()
 }
 
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
+    implementation("org.bytedeco:javacv-platform:1.5.9")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 }
 
@@ -36,4 +36,11 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.bootJar {
+    archiveFileName.set("cloud-music-backend.jar")
+    layered {
+        enabled = true
+    }
 }

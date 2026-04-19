@@ -1,0 +1,36 @@
+# 生产环境配置模板
+# 复制此文件为 application-prod.yml 并填入实际配置
+
+server:
+  port: 8080
+  compression:
+    enabled: true
+    mime-types: application/json,text/html,text/xml,text/plain,text/css,text/javascript,application/javascript
+  error:
+    include-message: never
+    include-binding-errors: never
+
+spring:
+  application:
+    name: cloud-music-backend
+  jackson:
+    default-property-inclusion: non_null
+    serialization:
+      write-dates-as-timestamps: false
+
+app:
+  music:
+    # 生产环境音乐文件路径
+    music-directory: /music/music-files
+    cover-directory: /music/music-cover
+    static-info-file: /music/music-info/static-info.json
+  security:
+    # 密钥轮换间隔（天）
+    key-rotation-interval-days: 7
+
+logging:
+  level:
+    root: INFO
+    com.zeeeestack: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
