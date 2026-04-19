@@ -7,8 +7,8 @@
     "close": "Gyaeuz",
     "appTitle": "zeeeestack Vaizvaiz",
     "pageTitle": "zeeeestack Vaizvaiz",
-    "pageTitleHome": "Home - zeeeestack Vaizvaiz",
-    "pageTitleNotFound": "404 - Page Not Found",
+    "pageTitleHome": "Ndaeuj - zeeeestack Vaizvaiz",
+    "pageTitleNotFound": "404 - Gyaeuz gyauz",
     "cloudMusic": "Vaizvaiz",
     "searchPlaceholder": "Gyaeuz gyaeuz...",
     "sortBy": "Dox",
@@ -34,7 +34,20 @@
     "sequence": "Dox",
     "random": "Mbouj",
     "single": "Gyaeuz gyaeuz",
-    "modeChanged": "Switched to {mode}"
+    "modeChanged": "Gyaeuz gyaeuz {mode}"
+  },
+  "notifications": {
+    "networkError": "Gyaeuz gyaeuz gyaeuz, gyaeuz gyaeuz gyaeuz gyaeuz backend",
+    "serverError": "Gyaeuz gyaeuz gyaeuz, gyaeuz gyaeuz gyaeuz",
+    "requestTimeout": "Gyaeuz gyaeuz gyaeuz, gyaeuz gyaeuz gyaeuz",
+    "apiNotFound": "Gyaeuz gyaeuz gyaeuz",
+    "generalError": "Gyaeuz gyaeuz, gyaeuz gyaeuz gyaeuz"
+  },
+  "notFound": {
+    "title": "Gyaeuz gyauz",
+    "description": "Gyaeuz gyaeuz, gyaeuz gyaeuz gyaeuz gyaeuz gyaeuz",
+    "goHome": "Gyaeuz ndaeuj",
+    "goBack": "Gyaeuz"
   },
   "language": {
     "title": "Gyaeuz",
@@ -68,18 +81,5 @@
     "hungarian": "Magyar",
     "romanian": "Română",
     "ukrainian": "Українська"
-  },
-  "notifications": {
-    "networkError": "Network connection failed, please check your network or backend service",
-    "serverError": "Server is temporarily unavailable, please try again later",
-    "requestTimeout": "Request timed out, please check your network and try again",
-    "apiNotFound": "Requested feature is temporarily unavailable",
-    "generalError": "Operation failed, please try again later"
-  },
-  "notFound": {
-    "title": "Page Not Found",
-    "description": "Sorry, the page you're looking for doesn't exist or has been removed",
-    "goHome": "Go Home",
-    "goBack": "Go Back"
   }
 }

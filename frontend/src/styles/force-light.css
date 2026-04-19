@@ -1,0 +1,119 @@
+html, body {
+  color-scheme: light only !important;
+}
+
+.body--dark {
+  background: #FFFFFF !important;
+  color: #212121 !important;
+}
+
+.body--dark * {
+  background-color: unset !important;
+  color: inherit !important;
+  border-color: #FFE4E9 !important;
+}
+
+.body--dark .q-header,
+.body--dark .q-footer,
+.body--dark .q-drawer,
+.body--dark .q-page,
+.body--dark .q-page-container,
+.body--dark .q-layout,
+.body--dark .q-card,
+.body--dark .q-list,
+.body--dark .q-item,
+.body--dark .q-field,
+.body--dark .q-field__control,
+.body--dark .q-field__native,
+.body--dark .q-field__append,
+.body--dark .q-field__prepend,
+.body--dark .q-field__label,
+.body--dark .q-menu,
+.body--dark .q-menu__content,
+.body--dark .q-dialog,
+.body--dark .q-dialog__inner,
+.body--dark .q-btn,
+.body--dark .q-btn__content,
+.body--dark .q-icon,
+.body--dark .q-toolbar,
+.body--dark .q-toolbar__title,
+.body--dark .q-drawer__content,
+.body--dark .q-item__section,
+.body--dark .q-item__label,
+.body--dark .q-slider,
+.body--dark .q-slider__track-container,
+.body--dark .q-slider__track,
+.body--dark .q-slider__thumb,
+.body--dark .q-spinner,
+.body--dark .q-loading,
+.body--dark .q-loading__box,
+.body--dark .q-banner,
+.body--dark .q-banner__content,
+.body--dark .q-select,
+.body--dark .q-select__dropdown-icon,
+.body--dark .q-table,
+.body--dark .q-table__top,
+.body--dark .q-table__bottom,
+.body--dark .q-td,
+.body--dark .q-th,
+.body--dark .q-tr {
+  background: #FFFFFF !important;
+  color: #212121 !important;
+  border-color: #FFE4E9 !important;
+}
+
+.body--dark .q-slider__track--active {
+  background: #FFB6C1 !important;
+}
+
+.body--dark .q-field--highlighted .q-field__label {
+  color: #FFB6C1 !important;
+}
+
+.body--dark .q-item:hover {
+  background: #FFF5F7 !important;
+}
+
+.body--dark .q-btn:hover {
+  background: #FFF5F7 !important;
+}
+
+.body--dark .q-menu .q-item {
+  background: transparent !important;
+}
+
+.body--dark .q-menu .q-item:hover {
+  background: #FFF5F7 !important;
+}
+
+.body--dark .q-field__control::before,
+.body--dark .q-field__control::after {
+  border-color: #FFE4E9 !important;
+  background: transparent !important;
+}
+
+.body--dark .q-field--focused .q-field__control::before,
+.body--dark .q-field--highlighted .q-field__control::before {
+  border-color: #FFB6C1 !important;
+}
+
+.body--dark .q-field--focused .q-field__control::after,
+.body--dark .q-field--highlighted .q-field__control::after {
+  background: #FFB6C1 !important;
+}
+
+.body--dark input,
+.body--dark textarea,
+.body--dark select {
+  background: #FFFFFF !important;
+  color: #212121 !important;
+  border-color: #FFE4E9 !important;
+}
+
+.body--dark .text-dark {
+  color: #212121 !important;
+}
+
+.body--dark .bg-dark {
+  background: #FFFFFF !important;
+}

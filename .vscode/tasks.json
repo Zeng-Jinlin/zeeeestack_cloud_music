@@ -2,26 +2,182 @@
   "version": "2.0.0",
   "tasks": [
     {
-      "label": "Build Backend",
+      "label": "Run Backend",
       "type": "shell",
-      "command": "cd backend; ./gradlew build -x test",
+      "command": "cd backend; ./gradlew bootRun",
       "windows": {
-        "command": "cd backend; .\\gradlew.bat build -x test"
+        "command": "cd backend; .\\gradlew.bat bootRun --console=plain"
+      },
+      "linux": {
+        "command": "cd backend && ./gradlew bootRun"
       },
       "group": "build",
-      "problemMatcher": []
+      "problemMatcher": {
+        "owner": "gradle",
+        "fileLocation": ["relative", "${workspaceFolder}/backend"],
+        "pattern": {
+          "regexp": "^.*ERROR.*$",
+          "message": 0
+        }
+      },
+      "detail": "启动 Spring Boot 后端服务 (端口 8080)"
     },
     {
-      "label": "Install Frontend Dependencies",
+      "label": "Run Frontend",
       "type": "shell",
-      "command": "cd frontend; npm install",
+      "command": "cd frontend; npm run dev",
+      "windows": {
+        "command": "cd frontend; npm run dev"
+      },
+      "linux": {
+        "command": "cd frontend && npm run dev"
+      },
       "group": "build",
-      "problemMatcher": []
+      "problemMatcher": {
+        "owner": "npm",
+        "fileLocation": ["relative", "${workspaceFolder}/frontend"],
+        "pattern": {
+          "regexp": "^.*ERROR.*$",
+          "message": 0
+        }
+      },
+      "detail": "启动 Vue 前端开发服务器 (端口 3000)"
     },
     {
-      "label": "Build All",
-      "dependsOn": ["Build Backend", "Install Frontend Dependencies"],
-      "group": "build"
+      "label": "Build Frontend",
+      "type": "shell",
+      "command": "cd frontend; npm run build",
+      "windows": {
+        "command": "cd frontend; npm run build"
+      },
+      "linux": {
+        "command": "cd frontend && npm run build"
+      },
+      "group": "build",
+      "problemMatcher": {
+        "owner": "npm",
+        "fileLocation": ["relative", "${workspaceFolder}/frontend"],
+        "pattern": {
+          "regexp": "^.*ERROR.*$",
+          "message": 0
+        }
+      },
+      "detail": "构建前端生产版本（输出到 frontend/dist/）",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "focus": false
+      }
+    },
+    {
+      "label": "Run Nginx",
+      "type": "shell",
+      "command": "nginx -p \"${workspaceFolder}\" -c \"${workspaceFolder}/nginx.dev.conf\"",
+      "windows": {
+        "command": "nginx -p \"${workspaceFolder}\" -c \"${workspaceFolder}/nginx.dev.conf\""
+      },
+      "linux": {
+        "command": "sudo nginx -p \"${workspaceFolder}\" -c \"${workspaceFolder}/nginx.dev.conf\""
+      },
+      "group": "build",
+      "problemMatcher": {
+        "owner": "nginx",
+        "fileLocation": "absolute",
+        "pattern": [
+          {
+            "regexp": "^nginx: \\[(\\w+)\\] (.*)$",
+            "severity": 1,
+            "message": 2
+          }
+        ],
+        "background": {
+          "activeOnStart": false,
+          "beginsPattern": "nginx: \\[emerg\\]",
+          "endsPattern": "nginx: \\[notice\\]"
+        }
+      },
+      "detail": "启动 Nginx 反向代理 (端口 8081)，需要 nginx 在 PATH 中",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "focus": false
+      }
+    },
+    {
+      "label": "Stop Nginx",
+      "type": "shell",
+      "command": "nginx -p \"${workspaceFolder}\" -s stop",
+      "windows": {
+        "command": "nginx -p \"${workspaceFolder}\" -s stop"
+      },
+      "linux": {
+        "command": "sudo nginx -p \"${workspaceFolder}\" -s stop"
+      },
+      "group": "build",
+      "problemMatcher": {
+        "owner": "nginx",
+        "fileLocation": "absolute",
+        "pattern": [
+          {
+            "regexp": "^nginx: \\[(\\w+)\\] (.*)$",
+            "severity": 1,
+            "message": 2
+          }
+        ]
+      },
+      "detail": "停止 Nginx 服务",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "focus": false
+      }
+    },
+    {
+      "label": "Reload Nginx",
+      "type": "shell",
+      "command": "nginx -p \"${workspaceFolder}\" -s reload",
+      "windows": {
+        "command": "nginx -p \"${workspaceFolder}\" -s reload"
+      },
+      "linux": {
+        "command": "sudo nginx -p \"${workspaceFolder}\" -s reload"
+      },
+      "group": "build",
+      "problemMatcher": {
+        "owner": "nginx",
+        "fileLocation": "absolute",
+        "pattern": [
+          {
+            "regexp": "^nginx: \\[(\\w+)\\] (.*)$",
+            "severity": 1,
+            "message": 2
+          }
+        ]
+      },
+      "detail": "重新加载 Nginx 配置",
+      "presentation": {
+        "reveal": "always",
+        "panel": "new",
+        "focus": false
+      }
+    },
+    {
+      "label": "Run All",
+      "dependsOn": ["Run Backend", "Run Frontend", "Run Nginx"],
+      "dependsOrder": "parallel",
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [],
+      "detail": "同时启动后端、前端和 Nginx"
+    },
+    {
+      "label": "Stop All",
+      "dependsOn": ["Stop Nginx"],
+      "group": "build",
+      "problemMatcher": [],
+      "detail": "停止所有服务"
     }
   ]
 }

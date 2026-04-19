@@ -1,9 +1,23 @@
 server:
   port: 8080
 
+spring:
+  application:
+    name: cloud-music-backend
+  jackson:
+    default-property-inclusion: non_null
+
 app:
   music:
     music-directory: ../music/music-files
     cover-directory: ../music/music-cover
+    static-info-file: ../music/music-info/static-info.json
   security:
     key-rotation-interval-days: 7
+
+logging:
+  level:
+    root: INFO
+    com.zeeeestack: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
