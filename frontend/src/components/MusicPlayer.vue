@@ -12,6 +12,10 @@
       @error="onError"
       @waiting="onWaiting"
       @canplay="onCanPlay"
+      @playing="onPlaying"
+      @pause="onPause"
+      @loadstart="onLoadStart"
+      @progress="onProgress"
     />
 
     <q-footer v-if="playerStore.currentSong" elevated class="player-footer">
@@ -64,6 +68,17 @@
             />
             <span class="time-text">{{ formatTime(playerStore.duration) }}</span>
           </div>
+          
+          <div v-if="playerStore.isLoading" class="loading-indicator">
+            <q-spinner color="#FFB6C1" size="16px" />
+            <span class="loading-text">{{ loadingMessage }}</span>
+          </div>
+          
+          <div v-if="playerStore.loadError" class="error-indicator">
+            <q-icon name="warning" color="#FF6B6B" size="16px" />
+            <span class="error-text">{{ playerStore.loadError }}</span>
+          </div>
+          
           <div v-if="!isMobile" class="control-buttons">
             <q-btn
               unelevated
@@ -160,6 +175,19 @@ const VOLUME_HIDE_DELAY = 3000
 const FADE_DURATION = 100
 
 let isFading = false
+
+const loadingMessage = computed(() => {
+  switch (playerStore.playbackState) {
+    case playerStore.PlaybackState.LOADING:
+      return '加载中...'
+    case playerStore.PlaybackState.BUFFERING:
+      return '缓冲中...'
+    case playerStore.PlaybackState.SWITCHING:
+      return '切换歌曲中...'
+    default:
+      return '加载中...'
+  }
+})
 
 const volumeIcon = computed(() => {
   if (playerStore.isMuted || playerStore.volume === 0) {
@@ -299,13 +327,33 @@ function onEnded() {
   }
 }
 
-let isRetrying = false
-
 function onWaiting() {
+  playerStore.setBuffering()
 }
 
 function onCanPlay() {
+  playerStore.setCanPlay()
 }
+
+function onPlaying() {
+  if (playerStore.playbackState !== playerStore.PlaybackState.PLAYING) {
+    playerStore.setCanPlay()
+  }
+}
+
+function onPause() {
+  if (playerStore.playbackState === playerStore.PlaybackState.PLAYING) {
+    playerStore.pause()
+  }
+}
+
+function onLoadStart() {
+}
+
+function onProgress() {
+}
+
+let isRetrying = false
 
 function onError() {
   if (isRetrying) return
@@ -453,7 +501,7 @@ onUnmounted(() => {
   grid-row: 1 / 2;
   justify-self: end;
   align-self: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .controls-section {
@@ -504,6 +552,32 @@ onUnmounted(() => {
 
 .progress-slider :deep(.q-slider__track--active) {
   transition: none !important;
+}
+
+.loading-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.loading-text {
+  font-size: 12px;
+  color: #FFB6C1;
+}
+
+.error-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+
+.error-text {
+  font-size: 12px;
+  color: #FF6B6B;
 }
 
 .control-buttons {

@@ -13,8 +13,12 @@ export const musicService = {
     return api.get(`/songs/${songId}`)
   },
 
-  getPlayUrl(songId) {
-    return api.get(`/songs/${songId}/play-url`)
+  getPlayUrl(songId, options = {}) {
+    const config = {}
+    if (options.signal) {
+      config.signal = options.signal
+    }
+    return api.get(`/songs/${songId}/play-url`, config)
   },
 
   getCoverUrl(songId) {

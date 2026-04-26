@@ -4,6 +4,16 @@ import { Notify } from 'quasar'
 import { i18n } from '@/i18n'
 import { musicService } from '@/services/musicService'
 
+const PlaybackState = {
+  IDLE: 'idle',
+  LOADING: 'loading',
+  BUFFERING: 'buffering',
+  PLAYING: 'playing',
+  PAUSED: 'paused',
+  SWITCHING: 'switching',
+  ERROR: 'error'
+}
+
 function shuffleArray(array) {
   const shuffled = [...array]
   for (let i = shuffled.length - 1; i > 0; i--) {
@@ -29,18 +39,23 @@ export const usePlayerStore = defineStore('player', () => {
   const currentSong = ref(null)
   const playUrl = ref('')
   const playUrlExpireTime = ref(0)
-  const isPlaying = ref(false)
+  const playbackState = ref(PlaybackState.IDLE)
   const currentTime = ref(0)
   const duration = ref(0)
   const volume = ref(0.8)
   const isMuted = ref(false)
   const playlist = ref([])
   const currentIndex = ref(-1)
-  const isLoading = ref(false)
   const playMode = ref('sequence')
   
   const randomPlaylist = ref([])
   const randomIndex = ref(-1)
+  
+  const loadProgress = ref(0)
+  const loadError = ref(null)
+  const currentLoadController = ref(null)
+  const loadTimeoutId = ref(null)
+  const LOAD_TIMEOUT = 30000
 
   const hasValidPlayUrl = computed(() => {
     if (!playUrl.value) return false
@@ -51,23 +66,75 @@ export const usePlayerStore = defineStore('player', () => {
     return currentSong.value && hasValidPlayUrl.value
   })
 
+  const isLoading = computed(() => {
+    return playbackState.value === PlaybackState.LOADING || 
+           playbackState.value === PlaybackState.SWITCHING ||
+           playbackState.value === PlaybackState.BUFFERING
+  })
+
+  const isPlaying = computed(() => {
+    return playbackState.value === PlaybackState.PLAYING
+  })
+
+  function cancelCurrentLoad() {
+    if (currentLoadController.value) {
+      currentLoadController.value.abort()
+      currentLoadController.value = null
+    }
+    if (loadTimeoutId.value) {
+      clearTimeout(loadTimeoutId.value)
+      loadTimeoutId.value = null
+    }
+  }
+
   async function fetchPlayUrl(songId) {
+    cancelCurrentLoad()
+    
+    const controller = new AbortController()
+    currentLoadController.value = controller
+    
+    loadTimeoutId.value = setTimeout(() => {
+      controller.abort()
+      loadError.value = '加载超时，请重试'
+      playbackState.value = PlaybackState.ERROR
+    }, LOAD_TIMEOUT)
+
     try {
-      isLoading.value = true
-      const response = await musicService.getPlayUrl(songId)
+      playbackState.value = PlaybackState.LOADING
+      loadProgress.value = 0
+      loadError.value = null
+      
+      const response = await musicService.getPlayUrl(songId, { signal: controller.signal })
+      
+      if (controller.signal.aborted) {
+        return null
+      }
+
       if (response && response.playUrl) {
         playUrl.value = response.playUrl
         playUrlExpireTime.value = Date.now() + 9 * 60 * 1000
+        loadProgress.value = 100
         return playUrl.value
       } else {
         throw new Error('Invalid response')
       }
     } catch (error) {
+      if (controller.signal.aborted) {
+        return null
+      }
       console.error('获取播放链接失败:', error)
+      loadError.value = error.message || '获取播放链接失败'
+      playbackState.value = PlaybackState.ERROR
       playUrl.value = ''
       throw error
     } finally {
-      isLoading.value = false
+      if (currentLoadController.value === controller) {
+        currentLoadController.value = null
+      }
+      if (loadTimeoutId.value) {
+        clearTimeout(loadTimeoutId.value)
+        loadTimeoutId.value = null
+      }
     }
   }
 
@@ -94,56 +161,97 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   async function playSong(song) {
+    if (currentSong.value && currentSong.value.id === song.id) {
+      if (playbackState.value === PlaybackState.PAUSED) {
+        resume()
+      }
+      return
+    }
+
+    cancelCurrentLoad()
+    
+    const previousState = playbackState.value
+    playbackState.value = PlaybackState.SWITCHING
+    loadError.value = null
+    loadProgress.value = 0
+
     try {
       currentSong.value = song
-      await fetchPlayUrl(song.id)
-      if (playUrl.value) {
-        isPlaying.value = true
-        currentTime.value = 0
-        
-        if (playMode.value === 'sequence' && playlist.value.length > 0) {
-          currentIndex.value = playlist.value.findIndex(s => s.id === song.id)
-        } else if (playMode.value === 'random') {
-          if (randomPlaylist.value.length === 0) {
-            generateRandomPlaylist()
-          } else {
-            const idx = randomPlaylist.value.findIndex(s => s.id === song.id)
-            if (idx !== -1) {
-              randomIndex.value = idx
-            }
+      
+      const url = await fetchPlayUrl(song.id)
+      
+      if (!url) {
+        return
+      }
+
+      playbackState.value = PlaybackState.PLAYING
+      currentTime.value = 0
+      
+      if (playMode.value === 'sequence' && playlist.value.length > 0) {
+        currentIndex.value = playlist.value.findIndex(s => s.id === song.id)
+      } else if (playMode.value === 'random') {
+        if (randomPlaylist.value.length === 0) {
+          generateRandomPlaylist()
+        } else {
+          const idx = randomPlaylist.value.findIndex(s => s.id === song.id)
+          if (idx !== -1) {
+            randomIndex.value = idx
           }
         }
       }
     } catch (error) {
       console.error('播放歌曲失败:', error)
+      if (playbackState.value === PlaybackState.SWITCHING) {
+        playbackState.value = previousState
+      }
     }
   }
 
   function togglePlay() {
-    if (!canPlay.value) {
+    if (playbackState.value === PlaybackState.PLAYING) {
+      pause()
+    } else if (playbackState.value === PlaybackState.PAUSED) {
+      resume()
+    } else if (canPlay.value) {
+      resume()
+    } else {
       ensureValidPlayUrl().then(() => {
         if (canPlay.value) {
-          isPlaying.value = !isPlaying.value
+          resume()
         }
       })
-      return
     }
-    isPlaying.value = !isPlaying.value
   }
 
   function pause() {
-    isPlaying.value = false
+    if (playbackState.value === PlaybackState.PLAYING) {
+      playbackState.value = PlaybackState.PAUSED
+    }
   }
 
   function resume() {
     if (canPlay.value) {
-      isPlaying.value = true
+      playbackState.value = PlaybackState.PLAYING
     }
   }
 
   function stop() {
-    isPlaying.value = false
+    cancelCurrentLoad()
+    playbackState.value = PlaybackState.IDLE
     currentTime.value = 0
+  }
+
+  function setBuffering() {
+    if (playbackState.value === PlaybackState.PLAYING) {
+      playbackState.value = PlaybackState.BUFFERING
+    }
+  }
+
+  function setCanPlay() {
+    if (playbackState.value === PlaybackState.BUFFERING || 
+        playbackState.value === PlaybackState.LOADING) {
+      playbackState.value = PlaybackState.PLAYING
+    }
   }
 
   function setCurrentTime(time) {
@@ -256,32 +364,39 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function clearPlayer() {
+    cancelCurrentLoad()
     currentSong.value = null
     playUrl.value = ''
     playUrlExpireTime.value = 0
-    isPlaying.value = false
+    playbackState.value = PlaybackState.IDLE
     currentTime.value = 0
     duration.value = 0
     currentIndex.value = -1
     randomPlaylist.value = []
     randomIndex.value = -1
+    loadProgress.value = 0
+    loadError.value = null
   }
 
   return {
     currentSong,
     playUrl,
     playUrlExpireTime,
-    isPlaying,
+    playbackState,
+    PlaybackState,
     currentTime,
     duration,
     volume,
     isMuted,
     playlist,
     currentIndex,
-    isLoading,
     playMode,
+    loadProgress,
+    loadError,
     hasValidPlayUrl,
     canPlay,
+    isLoading,
+    isPlaying,
     fetchPlayUrl,
     ensureValidPlayUrl,
     playSong,
@@ -289,6 +404,8 @@ export const usePlayerStore = defineStore('player', () => {
     pause,
     resume,
     stop,
+    setBuffering,
+    setCanPlay,
     setCurrentTime,
     setDuration,
     setVolume,
@@ -298,6 +415,7 @@ export const usePlayerStore = defineStore('player', () => {
     setPlaylist,
     playNext,
     playPrevious,
-    clearPlayer
+    clearPlayer,
+    cancelCurrentLoad
   }
 })
