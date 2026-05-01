@@ -3,8 +3,8 @@
     <audio
       v-if="playerStore.playUrl"
       ref="audioRef"
+      :key="playerStore.audioResetKey"
       :src="playerStore.playUrl"
-      :volume="playerStore.isMuted ? 0 : playerStore.volume"
       preload="auto"
       @timeupdate="onTimeUpdate"
       @loadedmetadata="onLoadedMetadata"
@@ -12,6 +12,10 @@
       @error="onError"
       @waiting="onWaiting"
       @canplay="onCanPlay"
+      @playing="onPlaying"
+      @pause="onPause"
+      @loadstart="onLoadStart"
+      @progress="onProgress"
     />
 
     <q-footer v-if="playerStore.currentSong" elevated class="player-footer">
@@ -21,6 +25,7 @@
         <div v-if="isMobile" class="control-buttons-section">
           <q-btn
             unelevated
+            flat
             icon="skip_previous"
             text-color="#424242"
             @click="playerStore.playPrevious"
@@ -29,6 +34,7 @@
           />
           <q-btn
             unelevated
+            flat
             :icon="playerStore.isPlaying ? 'pause' : 'play_arrow'"
             text-color="#FFB6C1"
             @click="playerStore.togglePlay"
@@ -38,6 +44,7 @@
           />
           <q-btn
             unelevated
+            flat
             icon="skip_next"
             text-color="#424242"
             @click="playerStore.playNext"
@@ -64,9 +71,11 @@
             />
             <span class="time-text">{{ formatTime(playerStore.duration) }}</span>
           </div>
+
           <div v-if="!isMobile" class="control-buttons">
             <q-btn
               unelevated
+              flat
               icon="skip_previous"
               text-color="#424242"
               @click="playerStore.playPrevious"
@@ -75,6 +84,7 @@
             />
             <q-btn
               unelevated
+              flat
               :icon="playerStore.isPlaying ? 'pause' : 'play_arrow'"
               text-color="#FFB6C1"
               @click="playerStore.togglePlay"
@@ -84,6 +94,7 @@
             />
             <q-btn
               unelevated
+              flat
               icon="skip_next"
               text-color="#424242"
               @click="playerStore.playNext"
@@ -97,6 +108,7 @@
           <div class="play-mode-section">
             <q-btn
               unelevated
+              flat
               :icon="playModeIcon"
               text-color="#424242"
               @click="handleTogglePlayMode"
@@ -107,6 +119,7 @@
           <div class="volume-control-wrapper" @mouseenter="onVolumeInteraction" @touchstart="onVolumeInteraction">
             <q-btn
               unelevated
+              flat
               :icon="volumeIcon"
               text-color="#424242"
               @click="handleVolumeButtonClick"
@@ -139,7 +152,7 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed, onUnmounted } from 'vue'
+import { ref, watch, onMounted, computed, onUnmounted, nextTick } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/playerStore'
 import SongDetail from './SongDetail.vue'
@@ -151,15 +164,31 @@ const { t } = useI18n()
 const audioRef = ref(null)
 const seekTime = ref(0)
 const volumeValue = ref(playerStore.volume)
+let loadingNotify = null
 
 const isMobile = computed(() => isMobileDevice())
 
 const showVolumeSlider = ref(false)
 let volumeHideTimer = null
 const VOLUME_HIDE_DELAY = 3000
-const FADE_DURATION = 100
 
-let isFading = false
+let isSeeking = false
+let isRetrying = false
+let lastErrorKey = null
+let currentFadeOperation = null
+
+const loadingMessage = computed(() => {
+  switch (playerStore.playbackState) {
+    case playerStore.PlaybackState.LOADING_DATA:
+      return t('player.loadingData')
+    case playerStore.PlaybackState.BUFFERING:
+      return t('player.bufferingAudio')
+    case playerStore.PlaybackState.SWITCHING:
+      return t('player.switchingSong')
+    default:
+      return t('player.loadingData')
+  }
+})
 
 const volumeIcon = computed(() => {
   if (playerStore.isMuted || playerStore.volume === 0) {
@@ -214,62 +243,52 @@ const clearVolumeHideTimer = () => {
   }
 }
 
-async function fadeOut(callback) {
-  if (!audioRef.value || isFading) {
-    callback && callback()
-    return
-  }
-  
-  isFading = true
-  const startVolume = audioRef.value.volume
-  const startTime = Date.now()
-  
-  const fade = () => {
-    const elapsed = Date.now() - startTime
-    const progress = Math.min(elapsed / FADE_DURATION, 1)
-    audioRef.value.volume = startVolume * (1 - progress)
-    
-    if (progress < 1) {
-      requestAnimationFrame(fade)
-    } else {
-      audioRef.value.volume = 0
-      isFading = false
-      callback && callback()
+const FADE_DURATION = 100
+
+function smoothFade(targetVolume) {
+  return new Promise((resolve) => {
+    if (!audioRef.value) {
+      resolve()
+      return
     }
-  }
-  
-  fade()
+    
+    const startVolume = audioRef.value.volume
+    const startTime = Date.now()
+    
+    const animate = () => {
+      if (!audioRef.value) {
+        resolve()
+        return
+      }
+      
+      const elapsed = Date.now() - startTime
+      const progress = Math.min(elapsed / FADE_DURATION, 1)
+      audioRef.value.volume = startVolume + (targetVolume - startVolume) * progress
+      
+      if (progress < 1) {
+        currentFadeOperation = requestAnimationFrame(animate)
+      } else {
+        audioRef.value.volume = targetVolume
+        currentFadeOperation = null
+        resolve()
+      }
+    }
+    
+    currentFadeOperation = requestAnimationFrame(animate)
+  })
+}
+
+async function fadeOut() {
+  if (!audioRef.value) return
+  await smoothFade(0)
 }
 
 async function fadeIn(targetVolume) {
-  if (!audioRef.value || isFading) {
-    if (audioRef.value) {
-      audioRef.value.volume = playerStore.isMuted ? 0 : targetVolume
-    }
-    return
-  }
-  
-  isFading = true
+  if (!audioRef.value) return
+  const finalVolume = playerStore.isMuted ? 0 : targetVolume
   audioRef.value.volume = 0
-  const startTime = Date.now()
-  
-  const fade = () => {
-    const elapsed = Date.now() - startTime
-    const progress = Math.min(elapsed / FADE_DURATION, 1)
-    audioRef.value.volume = targetVolume * progress
-    
-    if (progress < 1) {
-      requestAnimationFrame(fade)
-    } else {
-      audioRef.value.volume = playerStore.isMuted ? 0 : targetVolume
-      isFading = false
-    }
-  }
-  
-  fade()
+  await smoothFade(finalVolume)
 }
-
-let isSeeking = false
 
 function formatTime(seconds) {
   if (!seconds || isNaN(seconds)) return '0:00'
@@ -289,6 +308,7 @@ function onTimeUpdate() {
 function onLoadedMetadata() {
   if (!audioRef.value) return
   playerStore.setDuration(audioRef.value.duration)
+  audioRef.value.volume = playerStore.isMuted ? 0 : playerStore.volume
 }
 
 function onEnded() {
@@ -299,12 +319,26 @@ function onEnded() {
   }
 }
 
-let isRetrying = false
-
 function onWaiting() {
+  playerStore.setBuffering()
 }
 
 function onCanPlay() {
+  playerStore.setCanPlay()
+}
+
+function onPlaying() {
+  playerStore.setPlaying()
+}
+
+function onPause() {
+  playerStore.setPaused()
+}
+
+function onLoadStart() {
+}
+
+function onProgress() {
 }
 
 function onError() {
@@ -312,7 +346,8 @@ function onError() {
   
   Notify.create({
     type: 'negative',
-    message: t('player.playError') || '播放出错，正在重新获取链接...'
+    message: t('player.playError'),
+    position: 'top'
   })
   
   if (playerStore.currentSong) {
@@ -351,56 +386,129 @@ function onSliderChange() {
   }
 }
 
-watch(() => playerStore.isPlaying, (newVal) => {
+watch(() => playerStore.isPlaying, async (newVal) => {
   if (!audioRef.value) return
+  
+  if (currentFadeOperation) {
+    cancelAnimationFrame(currentFadeOperation)
+    currentFadeOperation = null
+  }
+  
   if (newVal) {
-    fadeIn(playerStore.volume)
+    audioRef.value.volume = 0
     audioRef.value.play().catch(err => {
       console.error('播放失败:', err)
     })
+    await fadeIn(playerStore.volume)
   } else {
-    fadeOut(() => {
-      if (audioRef.value && audioRef.value.currentTime < audioRef.value.duration) {
-        audioRef.value.pause()
-      }
+    await fadeOut()
+    audioRef.value.pause()
+  }
+}, { flush: 'post' })
+
+watch(() => playerStore.playUrl, async (newUrl, oldUrl) => {
+  if (!newUrl) return
+  
+  if (newUrl !== oldUrl) {
+    await nextTick()
+    
+    if (!audioRef.value) return
+    
+    const shouldPlay = playerStore.isPlaying
+    if (shouldPlay) {
+      await fadeOut()
+    }
+    audioRef.value.pause()
+    audioRef.value.load()
+    if (shouldPlay) {
+      audioRef.value.play().catch(err => {
+        console.error('自动播放失败:', err)
+      })
+      await fadeIn(playerStore.volume)
+    }
+  }
+})
+
+watch(() => playerStore.isLoading, (newVal) => {
+  if (newVal) {
+    if (loadingNotify) {
+      loadingNotify()
+    }
+    loadingNotify = Notify.create({
+      type: 'ongoing',
+      message: loadingMessage.value,
+      position: 'top',
+      spinner: true,
+      spinnerColor: '#FFB6C1',
+      color: '#FFE4E9',
+      textColor: '#424242',
+      timeout: 0
+    })
+  } else {
+    if (loadingNotify) {
+      loadingNotify()
+      loadingNotify = null
+    }
+  }
+})
+
+watch(() => playerStore.loadErrorKey, (newVal) => {
+  if (newVal && newVal !== lastErrorKey) {
+    lastErrorKey = newVal
+    Notify.create({
+      type: 'negative',
+      message: playerStore.loadError,
+      position: 'top',
+      icon: 'warning',
+      timeout: 3000
     })
   }
 })
 
-watch(() => playerStore.playUrl, (newUrl, oldUrl) => {
-  if (audioRef.value && newUrl && newUrl !== oldUrl) {
-    const wasPlaying = playerStore.isPlaying
-    const targetVolume = playerStore.volume
-    
-    fadeOut(() => {
-      audioRef.value.load()
-      if (wasPlaying) {
-        audioRef.value.addEventListener('loadedmetadata', function onLoaded() {
-          fadeIn(targetVolume)
-          audioRef.value.play().catch(err => {
-            console.error('自动播放失败:', err)
-          })
-          audioRef.value.removeEventListener('loadedmetadata', onLoaded)
-        }, { once: true })
-      }
-    })
+watch(() => playerStore.playbackState, (newVal) => {
+  if (newVal === playerStore.PlaybackState.LOADING_DATA || newVal === playerStore.PlaybackState.PLAYING) {
+    lastErrorKey = null
   }
 })
 
 watch(volumeValue, (newVal) => {
   playerStore.setVolume(newVal)
+  if (audioRef.value) {
+    audioRef.value.volume = playerStore.isMuted ? 0 : newVal
+  }
+})
+
+watch(() => playerStore.isMuted, (newVal) => {
+  if (audioRef.value) {
+    audioRef.value.volume = newVal ? 0 : playerStore.volume
+  }
+})
+
+watch(() => playerStore.currentSong, (newSong, oldSong) => {
+  if (newSong && newSong.id !== oldSong?.id) {
+    seekTime.value = 0
+  }
 })
 
 onMounted(() => {
-  if (playerStore.playUrl && playerStore.isPlaying && audioRef.value) {
-    audioRef.value.play().catch(err => {
-      console.error('自动播放失败:', err)
-    })
+  playerStore.initNetworkListener()
+  if (playerStore.playUrl && audioRef.value) {
+    audioRef.value.volume = playerStore.isMuted ? 0 : playerStore.volume
+    if (playerStore.isPlaying) {
+      audioRef.value.play().catch(err => {
+        console.error('自动播放失败:', err)
+      })
+    }
   }
 })
 
 onUnmounted(() => {
   clearVolumeHideTimer()
+  playerStore.cleanupNetworkListener()
+  if (loadingNotify) {
+    loadingNotify()
+    loadingNotify = null
+  }
 })
 </script>
 
@@ -453,7 +561,7 @@ onUnmounted(() => {
   grid-row: 1 / 2;
   justify-self: end;
   align-self: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .controls-section {
@@ -717,17 +825,33 @@ onUnmounted(() => {
     padding: 10px 12px;
   }
   
-  .player-container--mobile .control-buttons-section {
-    gap: 6px;
-  }
-  
   .control-btn,
   .play-btn,
   .mode-btn,
   .volume-btn {
-    padding: 10px;
-    min-width: 44px;
-    min-height: 44px;
+    padding: 10px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+    transform: none !important;
+    transition: none !important;
+    box-shadow: none !important;
+  }
+  
+  .control-btn:hover,
+  .control-btn:focus,
+  .control-btn:active,
+  .play-btn:hover,
+  .play-btn:focus,
+  .play-btn:active,
+  .mode-btn:hover,
+  .mode-btn:focus,
+  .mode-btn:active,
+  .volume-btn:hover,
+  .volume-btn:focus,
+  .volume-btn:active {
+    transform: none !important;
+    background: #FFE4E9 !important;
+    box-shadow: none !important;
   }
   
   .volume-control-wrapper {

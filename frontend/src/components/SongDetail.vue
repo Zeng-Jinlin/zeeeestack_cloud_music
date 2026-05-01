@@ -12,12 +12,16 @@
     </q-avatar>
     <div class="song-info">
       <div class="song-title">{{ song.title }}</div>
+      <div v-if="translation" class="song-translation">{{ translation }}</div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
+import { usePlayerStore } from '@/stores/playerStore'
+import { getLanguage } from '@/i18n'
+import { getGlobalTranslations } from '@/services/translateService'
 
 const props = defineProps({
   song: {
@@ -26,9 +30,15 @@ const props = defineProps({
   }
 })
 
+const playerStore = usePlayerStore()
 const defaultCover = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjRjVGNUY1Ii8+PHBhdGggZmlsbD0iI0ZGQjZDNSIgZD0iTTEyIDN2MTAuNTVjLS41OS0uMzQtMS4yNy0uNTUtMi0uNTVjLTIuMjEgMC00IDEuNzktNCA0czEuNzkgNCA0IDRzNC0xLjc5IDQtNFY3aDRWMy0xMnYtMTNoLTR6Ii8+PC9zdmc+'
 
 const imageLoaded = ref(false)
+const globalTranslations = getGlobalTranslations()
+
+const translation = computed(() => {
+  return globalTranslations.value[props.song.id] || null
+})
 
 const onImageLoad = () => {
   imageLoaded.value = true
@@ -37,6 +47,9 @@ const onImageLoad = () => {
 watch(() => props.song, () => {
   imageLoaded.value = false
 }, { deep: true })
+
+watch(() => getLanguage(), () => {
+})
 </script>
 
 <style scoped>
@@ -81,6 +94,14 @@ watch(() => props.song, () => {
   font-size: 14px;
   font-weight: 600;
   color: #212121;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.song-translation {
+  font-size: 11px;
+  color: #9E9E9E;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;

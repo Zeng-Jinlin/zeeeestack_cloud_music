@@ -34,7 +34,11 @@
     "sequence": "เรียงลำดับ",
     "random": "สุ่ม",
     "single": "ทำซ้ำหนึ่งเพลง",
-    "modeChanged": "สลับไป {mode} แล้ว"
+    "modeChanged": "สลับไป {mode} แล้ว",
+    "loadingData": "กำลังขอข้อมูล...",
+    "bufferingAudio": "กำลังบัฟเฟอร์เสียง...",
+    "switchingSong": "กำลังเปลี่ยนเพลง...",
+    "nextPreloaded": "เพลงถัดไปพร้อม"
   },
   "notifications": {
     "networkError": "การเชื่อมต่อเครือข่ายล้มเหลว โปรดตรวจสอบเครือข่ายหรือบริการแบ็กเอนด์ของคุณ",

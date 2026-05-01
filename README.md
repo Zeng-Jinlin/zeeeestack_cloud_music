@@ -85,7 +85,7 @@ zeeeestack_cloud_music/
 
 | 软件       | 版本  | 说明                                                          |
 | -------- | --- | ----------------------------------------------------------- |
-| Java JDK | 17+ | [下载地址](https://www.oracle.com/java/technologies/downloads/) |
+| Open JDK | 17+ | [下载地址](https://openjdk.org/) |
 | Node.js  | 18+ | [下载地址](https://nodejs.org/)                                 |
 | Nginx    | 最新  | [下载地址](http://nginx.org/en/download.html)                   |
 

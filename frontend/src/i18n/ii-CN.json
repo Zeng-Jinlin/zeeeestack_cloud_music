@@ -34,7 +34,11 @@
     "sequence": "顺序播放",
     "random": "随机播放",
     "single": "单曲循环",
-    "modeChanged": "已切换到 {mode}"
+    "modeChanged": "已切换到 {mode}",
+    "loadingData": "正在请求数据...",
+    "bufferingAudio": "正在缓冲音频资源...",
+    "switchingSong": "切换歌曲中...",
+    "nextPreloaded": "ꈺꁸꊸꆏꊪ"
   },
   "notifications": {
     "networkError": "网络连接失败，请检查您的网络或后端服务",

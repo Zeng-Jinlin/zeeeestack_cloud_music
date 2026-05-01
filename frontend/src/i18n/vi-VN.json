@@ -34,7 +34,11 @@
     "sequence": "Theo thứ tự",
     "random": "Ngẫu nhiên",
     "single": "Lặp lại một",
-    "modeChanged": "Đã chuyển sang {mode}"
+    "modeChanged": "Đã chuyển sang {mode}",
+    "loadingData": "Đang yêu cầu dữ liệu...",
+    "bufferingAudio": "Đang đệm âm thanh...",
+    "switchingSong": "Đang chuyển bài hát...",
+    "nextPreloaded": "Tiếp theo sẵn sàng"
   },
   "notifications": {
     "networkError": "Kết nối mạng không thành công, vui lòng kiểm tra mạng của bạn hoặc dịch vụ backend",

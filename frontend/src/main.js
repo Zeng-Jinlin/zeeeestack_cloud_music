@@ -4,6 +4,7 @@ import { Quasar, Notify, Dark } from 'quasar'
 import { i18n, setLanguage } from './i18n'
 import quasarLang from 'quasar/lang/zh-CN'
 import { initDeviceFingerprint } from './utils/deviceFingerprint'
+import { initBackgroundPlayback } from './utils/backgroundPlayback'
 
 import '@quasar/extras/material-icons/material-icons.css'
 import 'quasar/src/css/index.sass'
@@ -12,6 +13,7 @@ import App from './App.vue'
 import router from './router'
 
 initDeviceFingerprint()
+initBackgroundPlayback()
 
 const app = createApp(App)
 
