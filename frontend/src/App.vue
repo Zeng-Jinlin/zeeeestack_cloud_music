@@ -43,29 +43,59 @@ import { useQuasar } from 'quasar'
 import { useRoute } from 'vue-router'
 import MusicPlayer from '@/components/MusicPlayer.vue'
 import logoSvg from '@/assets/logo.svg'
-import { setLanguage, i18n, SUPPORTED_LANGUAGES } from '@/i18n'
+import { setLanguage, i18n, SUPPORTED_LANGUAGES, getLanguage } from '@/i18n'
 import { updateDocumentTitle } from '@/router'
 import { usePlayerStore } from '@/stores/playerStore'
+import { getGlobalTranslations } from '@/services/translateService'
 
 const $q = useQuasar()
 const route = useRoute()
 const playerStore = usePlayerStore()
 const currentLang = ref(i18n.global.locale.value)
 const supportedLanguages = SUPPORTED_LANGUAGES
+const globalTranslations = getGlobalTranslations()
 
 function changeLanguage(lang) {
   setLanguage(lang)
   currentLang.value = lang
-  updateDocumentTitle(route)
+  setTimeout(() => {
+    updateCustomTitle()
+  }, 100)
+}
+
+function updateCustomTitle() {
+  if (playerStore.currentSong && playerStore.isPlaying) {
+    const song = playerStore.currentSong
+    const translation = globalTranslations.value[song.id]
+    if (translation) {
+      document.title = `${song.title} (${translation}) - zeeeestack云音乐`
+    } else {
+      document.title = `${song.title} - zeeeestack云音乐`
+    }
+  } else {
+    document.title = 'zeeeestack云音乐'
+  }
 }
 
 watch(() => i18n.global.locale.value, () => {
-  updateDocumentTitle(route)
+  currentLang.value = i18n.global.locale.value
+  setTimeout(() => {
+    updateCustomTitle()
+  }, 100)
+})
+
+watch(() => playerStore.currentSong, () => {
+  updateCustomTitle()
+})
+
+watch(() => playerStore.isPlaying, () => {
+  updateCustomTitle()
 })
 
 onMounted(() => {
   $q.dark.set(false)
   playerStore.initNetworkListener()
+  updateCustomTitle()
 })
 
 onUnmounted(() => {

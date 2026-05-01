@@ -1,4 +1,5 @@
 import { getLanguage } from '@/i18n'
+import { ref, watch } from 'vue'
 
 const TRANSLATE_CACHE_KEY = 'song_title_translations'
 const CACHE_EXPIRY = 24 * 60 * 60 * 1000
@@ -9,6 +10,16 @@ interface TranslationCache {
     timestamp: number
   }
 }
+
+interface TranslationState {
+  translations: { [key: string]: string }
+  isLoading: boolean
+  lastLang: string | null
+}
+
+const globalTranslations = ref<{ [key: string]: string }>({})
+const isTranslationLoading = ref(false)
+let currentTranslationLang: string | null = null
 
 function getCache(): TranslationCache {
   try {
@@ -52,6 +63,12 @@ const unsupportedLanguages = [
   'ii-CN',
   'za-CN'
 ]
+
+function decodeHTMLEntities(text: string): string {
+  const textarea = document.createElement('textarea')
+  textarea.innerHTML = text
+  return textarea.value
+}
 
 function getMyMemoryLang(locale: string): string {
   const langMap: { [key: string]: string } = {
@@ -134,7 +151,7 @@ export async function translateSongTitles(titles: string[]): Promise<{ [key: str
         let translation = translations[i]
         
         if (translation) {
-          translation = translation.trim()
+          translation = decodeHTMLEntities(translation.trim())
           const cacheKey = getCacheKey(originalTitle, actualTargetLang)
           cache[cacheKey] = {
             translation,
@@ -156,6 +173,55 @@ export async function translateSongTitles(titles: string[]): Promise<{ [key: str
   return results
 }
 
+export async function translateSingleSongTitle(title: string): Promise<string | null> {
+  const results = await translateSongTitles([title])
+  return results[title]
+}
+
+export function getGlobalTranslations() {
+  return globalTranslations
+}
+
+export async function translateTitlesAndUpdateGlobal(titles: string[], songIds: string[]): Promise<void> {
+  const currentLang = getLanguage()
+  
+  if (currentTranslationLang !== currentLang) {
+    globalTranslations.value = {}
+    currentTranslationLang = currentLang
+    isTranslationLoading.value = false
+  }
+  
+  if (isTranslationLoading.value) return
+  
+  isTranslationLoading.value = true
+  
+  try {
+    const results = await translateSongTitles(titles)
+    
+    if (currentLang !== getLanguage()) return
+    
+    for (let i = 0; i < titles.length; i++) {
+      const title = titles[i]
+      const songId = songIds[i]
+      const translation = results[title]
+      
+      if (translation && translation.trim() !== '' && translation !== title) {
+        globalTranslations.value[songId] = translation
+      } else {
+        delete globalTranslations.value[songId]
+      }
+    }
+  } finally {
+    isTranslationLoading.value = false
+  }
+}
+
+export function getTranslationForSong(songId: string): string | null {
+  return globalTranslations.value[songId] || null
+}
+
 export function clearTranslationCache(): void {
   localStorage.removeItem(TRANSLATE_CACHE_KEY)
+  globalTranslations.value = {}
+  currentTranslationLang = null
 }

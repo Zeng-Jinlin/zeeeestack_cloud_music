@@ -83,8 +83,8 @@
             <div class="song-title">{{ song.title }}</div>
             <div class="song-meta">
               <span class="song-duration">{{ formatDuration(song.duration) }}</span>
-              <span v-if="translatedTitles[song.id]" class="song-separator"> - </span>
-              <span v-if="translatedTitles[song.id]" class="song-translation">{{ translatedTitles[song.id] }}</span>
+              <span v-if="translationMap[song.id]" class="song-separator"> - </span>
+              <span v-if="translationMap[song.id]" class="song-translation">{{ translationMap[song.id] }}</span>
             </div>
             <div class="song-updated">{{ $t('musicList.updated') }}: {{ formatDate(song.lastModified) }}</div>
           </div>
@@ -115,7 +115,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { usePlayerStore } from '@/stores/playerStore'
 import { musicService } from '@/services/musicService'
-import { translateSongTitles } from '@/services/translateService'
+import { translateTitlesAndUpdateGlobal, getGlobalTranslations } from '@/services/translateService'
 
 const playerStore = usePlayerStore()
 const { t, locale } = useI18n()
@@ -127,7 +127,9 @@ const loadedImages = ref({})
 const activeSongId = ref(null)
 const searchQuery = ref('')
 const sortOption = ref('date-desc')
-const translatedTitles = ref({})
+const globalTranslations = getGlobalTranslations()
+const translationMap = computed(() => globalTranslations.value)
+
 const sortOptions = computed(() => [
   { label: t('common.sortByNameAsc'), value: 'name-asc' },
   { label: t('common.sortByNameDesc'), value: 'name-desc' },
@@ -143,7 +145,7 @@ const filteredMusicList = computed(() => {
     const query = searchQuery.value.toLowerCase()
     result = result.filter(song => {
       const titleMatch = song.title.toLowerCase().includes(query)
-      const translatedTitle = translatedTitles.value[song.id]
+      const translatedTitle = translationMap.value[song.id]
       const translatedMatch = translatedTitle && translatedTitle.toLowerCase().includes(query)
       return titleMatch || translatedMatch
     })
@@ -166,15 +168,9 @@ const filteredMusicList = computed(() => {
 })
 
 async function translateAllTitles() {
-  const titlesToTranslate = musicList.value.map(song => song.title)
-  const translations = await translateSongTitles(titlesToTranslate)
-  
-  for (const song of musicList.value) {
-    const translation = translations[song.title]
-    if (translation) {
-      translatedTitles.value[song.id] = translation
-    }
-  }
+  const titles = musicList.value.map(song => song.title)
+  const songIds = musicList.value.map(song => song.id)
+  await translateTitlesAndUpdateGlobal(titles, songIds)
 }
 
 function onImageLoad(songId) {
@@ -299,7 +295,6 @@ onMounted(() => {
 })
 
 watch(locale, () => {
-  translatedTitles.value = {}
   translateAllTitles()
 })
 </script>
