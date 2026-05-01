@@ -34,7 +34,10 @@
     "sequence": "Secuencia",
     "random": "Aleatorio",
     "single": "Repetir una",
-    "modeChanged": "Cambiado a {mode}"
+    "modeChanged": "Cambiado a {mode}",
+    "loadingData": "Solicitando datos...",
+    "bufferingAudio": "Almacenando audio en búfer...",
+    "switchingSong": "Cambiando canción..."
   },
   "notifications": {
     "networkError": "Error de conexión de red, por favor verifique su red o servicio backend",

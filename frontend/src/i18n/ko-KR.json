@@ -34,7 +34,10 @@
     "sequence": "순서대로",
     "random": "랜덤",
     "single": "한 곡 반복",
-    "modeChanged": "{mode}로 전환했습니다"
+    "modeChanged": "{mode}로 전환했습니다",
+    "loadingData": "데이터 요청 중...",
+    "bufferingAudio": "오디오 버퍼링 중...",
+    "switchingSong": "노래 전환 중..."
   },
   "notifications": {
     "networkError": "네트워크 연결에 실패했습니다. 네트워크 또는 백엔드 서비스를 확인하세요.",

@@ -34,7 +34,10 @@
     "sequence": "Dox",
     "random": "Mbouj",
     "single": "Gyaeuz gyaeuz",
-    "modeChanged": "Gyaeuz gyaeuz {mode}"
+    "modeChanged": "Gyaeuz gyaeuz {mode}",
+    "loadingData": "Gyaeuz gyaeuz gyaeuz...",
+    "bufferingAudio": "Gyaeuz gyaeuz gyaeuz...",
+    "switchingSong": "Gyaeuz gyaeuz gyaeuz..."
   },
   "notifications": {
     "networkError": "Gyaeuz gyaeuz gyaeuz, gyaeuz gyaeuz gyaeuz gyaeuz backend",

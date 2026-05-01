@@ -34,7 +34,10 @@
     "sequence": "تسلسلي",
     "random": "عشوائي",
     "single": "إعادة واحدة",
-    "modeChanged": "تم التغيير إلى {mode}"
+    "modeChanged": "تم التغيير إلى {mode}",
+    "loadingData": "جارٍ طلب البيانات...",
+    "bufferingAudio": "جارٍ تخزين الصوت في ذاكرة التخزين المؤقت...",
+    "switchingSong": "جارٍ تبديل الأغنية..."
   },
   "notifications": {
     "networkError": "فشل الاتصال بالشبكة، يرجى التحقق من شبكتك أو خدمة الخلفية",

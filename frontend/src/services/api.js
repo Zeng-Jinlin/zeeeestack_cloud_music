@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { Notify } from 'quasar'
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || '/api',
@@ -28,27 +27,21 @@ api.interceptors.response.use(
     })
     
     const status = error.response?.status
-    let message = '请求失败'
+    let messageKey = 'notifications.generalError'
     
     if (status === 404) {
-      message = '接口不存在 (404)'
+      messageKey = 'notifications.apiNotFound'
     } else if (status === 500) {
-      message = '服务器错误 (500)'
+      messageKey = 'notifications.serverError'
     } else if (error.message.includes('timeout')) {
-      message = '请求超时'
+      messageKey = 'notifications.requestTimeout'
     } else if (error.message.includes('Network Error')) {
-      message = '网络连接失败，请检查后端服务是否启动'
+      messageKey = 'notifications.networkError'
     } else {
-      message = error.response?.data?.message || error.message || '请求失败'
+      messageKey = 'notifications.generalError'
     }
     
-    Notify.create({
-      type: 'negative',
-      message: message,
-      position: 'top',
-      timeout: 3000
-    })
-    
+    error.notifyMessage = messageKey
     return Promise.reject(error)
   }
 )

@@ -34,7 +34,10 @@
     "sequence": "Berurutan",
     "random": "Acak",
     "single": "Ulangi satu",
-    "modeChanged": "Beralih ke {mode}"
+    "modeChanged": "Beralih ke {mode}",
+    "loadingData": "Meminta data...",
+    "bufferingAudio": "Muffang audio...",
+    "switchingSong": "Mengganti lagu..."
   },
   "notifications": {
     "networkError": "Koneksi jaringan gagal, silakan periksa jaringan Anda atau layanan backend",

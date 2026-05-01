@@ -6,7 +6,7 @@ import { musicService } from '@/services/musicService'
 
 const PlaybackState = {
   IDLE: 'idle',
-  LOADING: 'loading',
+  LOADING_DATA: 'loading_data',
   BUFFERING: 'buffering',
   PLAYING: 'playing',
   PAUSED: 'paused',
@@ -53,9 +53,22 @@ export const usePlayerStore = defineStore('player', () => {
   
   const loadProgress = ref(0)
   const loadError = ref(null)
+  const loadErrorKey = ref(null)
   const currentLoadController = ref(null)
   const loadTimeoutId = ref(null)
   const LOAD_TIMEOUT = 30000
+  
+  // 后台播放相关
+  let wakeLock = null
+  let backgroundKeepAliveTimer = null
+  let networkListener = null
+  let wasPlayingBeforeError = false
+  let isNetworkOffline = false
+  const audioResetKey = ref(0)
+  const networkRetryCount = ref(0)
+  let networkRetryTimer = null
+  const NETWORK_RETRY_BASE_DELAY = 1000
+  const NETWORK_RETRY_MAX_DELAY = 30000
 
   const hasValidPlayUrl = computed(() => {
     if (!playUrl.value) return false
@@ -67,7 +80,7 @@ export const usePlayerStore = defineStore('player', () => {
   })
 
   const isLoading = computed(() => {
-    return playbackState.value === PlaybackState.LOADING || 
+    return playbackState.value === PlaybackState.LOADING_DATA || 
            playbackState.value === PlaybackState.SWITCHING ||
            playbackState.value === PlaybackState.BUFFERING
   })
@@ -75,6 +88,206 @@ export const usePlayerStore = defineStore('player', () => {
   const isPlaying = computed(() => {
     return playbackState.value === PlaybackState.PLAYING
   })
+  
+  // 后台播放初始化
+  async function initBackgroundPlayback() {
+    try {
+      // 请求屏幕常亮权限
+      if ('wakeLock' in navigator) {
+        try {
+          wakeLock = await navigator.wakeLock.request('screen')
+          console.log('Screen wake lock acquired for background playback')
+        } catch (err) {
+          console.log('Wake lock not available:', err)
+        }
+      }
+      
+      // 启动后台保持活跃定时器
+      startBackgroundKeepAlive()
+      
+      // 监听可见性变化
+      document.addEventListener('visibilitychange', handleVisibilityChange)
+      
+    } catch (error) {
+      console.error('Failed to initialize background playback:', error)
+    }
+  }
+  
+  // 清理后台播放
+  function cleanupBackgroundPlayback() {
+    if (wakeLock) {
+      wakeLock.release().then(() => {
+        wakeLock = null
+        console.log('Wake lock released')
+      })
+    }
+    
+    stopBackgroundKeepAlive()
+    document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }
+  
+  function initNetworkListener() {
+    if (networkListener) return
+    
+    networkListener = () => {
+      if (navigator.onLine) {
+        console.log('Network online, checking playback state...')
+        isNetworkOffline = false
+        
+        // 清除之前的重试定时器
+        if (networkRetryTimer) {
+          clearTimeout(networkRetryTimer)
+          networkRetryTimer = null
+        }
+        
+        // 只要有当前歌曲且没有有效播放链接，都尝试恢复
+        if (currentSong.value && !hasValidPlayUrl.value) {
+          networkRetryCount.value++
+          console.log(`Network recovery attempt #${networkRetryCount.value}`)
+          
+          playbackState.value = PlaybackState.IDLE
+          fetchPlayUrl(currentSong.value.id).then(() => {
+            if (wasPlayingBeforeError && hasValidPlayUrl.value) {
+              resume()
+            }
+          }).catch(() => {
+            // 如果失败，延迟后继续重试
+            scheduleNetworkRetry()
+          })
+          wasPlayingBeforeError = false
+        } else if (playbackState.value === PlaybackState.ERROR && currentSong.value) {
+          networkRetryCount.value++
+          console.log(`Network recovery attempt #${networkRetryCount.value}`)
+          
+          if (hasValidPlayUrl.value) {
+            console.log('Play URL still valid, resetting audio element...')
+            resetAudioElement()
+            playbackState.value = PlaybackState.IDLE
+            if (wasPlayingBeforeError) {
+              playbackState.value = PlaybackState.PLAYING
+            }
+            wasPlayingBeforeError = false
+          } else {
+            console.log('Play URL expired, fetching new one...')
+            playbackState.value = PlaybackState.IDLE
+            fetchPlayUrl(currentSong.value.id).then(() => {
+              if (wasPlayingBeforeError && hasValidPlayUrl.value) {
+                resume()
+              }
+            }).catch(() => {
+              // 如果失败，延迟后继续重试
+              scheduleNetworkRetry()
+            })
+            wasPlayingBeforeError = false
+          }
+        } else if (playbackState.value === PlaybackState.LOADING_DATA && !currentSong.value) {
+          playbackState.value = PlaybackState.IDLE
+        }
+      } else {
+        console.log('Network offline')
+        isNetworkOffline = true
+        networkRetryCount.value = 0
+        // 清除之前的重试定时器
+        if (networkRetryTimer) {
+          clearTimeout(networkRetryTimer)
+          networkRetryTimer = null
+        }
+      }
+    }
+    
+    window.addEventListener('online', networkListener)
+    window.addEventListener('offline', networkListener)
+  }
+  
+  function scheduleNetworkRetry() {
+    // 清除之前的定时器
+    if (networkRetryTimer) {
+      clearTimeout(networkRetryTimer)
+    }
+    
+    // 使用指数退避策略，但有最大延迟限制
+    const delay = Math.min(
+      NETWORK_RETRY_BASE_DELAY * Math.pow(2, networkRetryCount.value),
+      NETWORK_RETRY_MAX_DELAY
+    )
+    
+    console.log(`Scheduling network retry in ${delay}ms...`)
+    
+    networkRetryTimer = setTimeout(() => {
+      if (navigator.onLine && currentSong.value && !hasValidPlayUrl.value) {
+        console.log(`Executing scheduled network retry #${networkRetryCount.value + 1}`)
+        networkRetryCount.value++
+        
+        playbackState.value = PlaybackState.IDLE
+        fetchPlayUrl(currentSong.value.id).then(() => {
+          if (wasPlayingBeforeError && hasValidPlayUrl.value) {
+            resume()
+          }
+        }).catch(() => {
+          // 继续安排下一次重试
+          scheduleNetworkRetry()
+        })
+        wasPlayingBeforeError = false
+      }
+    }, delay)
+  }
+
+  function cleanupNetworkListener() {
+    if (networkListener) {
+      window.removeEventListener('online', networkListener)
+      window.removeEventListener('offline', networkListener)
+      networkListener = null
+    }
+    if (networkRetryTimer) {
+      clearTimeout(networkRetryTimer)
+      networkRetryTimer = null
+    }
+    isNetworkOffline = false
+    networkRetryCount.value = 0
+  }
+  
+  function resetAudioElement() {
+    audioResetKey.value++
+  }
+  
+  // 启动后台保持活跃
+  function startBackgroundKeepAlive() {
+    if (backgroundKeepAliveTimer) {
+      clearInterval(backgroundKeepAliveTimer)
+    }
+    
+    backgroundKeepAliveTimer = setInterval(() => {
+      if (isPlaying.value && document.hidden) {
+        // 触发轻量活动以保持进程
+        const event = new CustomEvent('audio-keep-alive')
+        window.dispatchEvent(event)
+        
+        // 播放一个静音片段保持音频会话
+        if (navigator.vibrate) {
+          navigator.vibrate(1)
+        }
+      }
+    }, 15000)
+  }
+  
+  // 停止后台保持活跃
+  function stopBackgroundKeepAlive() {
+    if (backgroundKeepAliveTimer) {
+      clearInterval(backgroundKeepAliveTimer)
+      backgroundKeepAliveTimer = null
+    }
+  }
+  
+  // 处理可见性变化
+  function handleVisibilityChange() {
+    if (!document.hidden) {
+      // 返回前台，恢复正常播放
+      console.log('App returned to foreground')
+    } else {
+      // 进入后台，保持播放
+      console.log('App entered background, maintaining playback')
+    }
+  }
 
   function cancelCurrentLoad() {
     if (currentLoadController.value) {
@@ -95,14 +308,16 @@ export const usePlayerStore = defineStore('player', () => {
     
     loadTimeoutId.value = setTimeout(() => {
       controller.abort()
-      loadError.value = '加载超时，请重试'
+      loadErrorKey.value = 'player.playError'
+      loadError.value = i18n.global.t('player.playError')
       playbackState.value = PlaybackState.ERROR
     }, LOAD_TIMEOUT)
 
     try {
-      playbackState.value = PlaybackState.LOADING
+      playbackState.value = PlaybackState.LOADING_DATA
       loadProgress.value = 0
       loadError.value = null
+      loadErrorKey.value = null
       
       const response = await musicService.getPlayUrl(songId, { signal: controller.signal })
       
@@ -111,9 +326,17 @@ export const usePlayerStore = defineStore('player', () => {
       }
 
       if (response && response.playUrl) {
+        // 成功获取播放链接，清除网络重试定时器
+        if (networkRetryTimer) {
+          clearTimeout(networkRetryTimer)
+          networkRetryTimer = null
+        }
+        networkRetryCount.value = 0
+        
         playUrl.value = response.playUrl
         playUrlExpireTime.value = Date.now() + 9 * 60 * 1000
         loadProgress.value = 100
+        wasPlayingBeforeError = false
         return playUrl.value
       } else {
         throw new Error('Invalid response')
@@ -123,9 +346,19 @@ export const usePlayerStore = defineStore('player', () => {
         return null
       }
       console.error('获取播放链接失败:', error)
-      loadError.value = error.message || '获取播放链接失败'
+      
+      wasPlayingBeforeError = isPlaying.value
+      
+      if (error.notifyMessage) {
+        loadErrorKey.value = error.notifyMessage
+        loadError.value = i18n.global.t(error.notifyMessage)
+      } else {
+        loadErrorKey.value = 'player.playError'
+        loadError.value = i18n.global.t('player.playError')
+      }
       playbackState.value = PlaybackState.ERROR
       playUrl.value = ''
+      
       throw error
     } finally {
       if (currentLoadController.value === controller) {
@@ -170,56 +403,69 @@ export const usePlayerStore = defineStore('player', () => {
 
     cancelCurrentLoad()
     
-    const previousState = playbackState.value
+    const wasPlaying = playbackState.value === PlaybackState.PLAYING
+    
     playbackState.value = PlaybackState.SWITCHING
     loadError.value = null
+    loadErrorKey.value = null
     loadProgress.value = 0
+    
+    currentTime.value = 0
+    duration.value = 0
+    
+    currentSong.value = song
+    
+    if (playMode.value === 'sequence' && playlist.value.length > 0) {
+      currentIndex.value = playlist.value.findIndex(s => s.id === song.id)
+    } else if (playMode.value === 'random') {
+      if (randomPlaylist.value.length === 0) {
+        generateRandomPlaylist()
+      } else {
+        const idx = randomPlaylist.value.findIndex(s => s.id === song.id)
+        if (idx !== -1) {
+          randomIndex.value = idx
+        }
+      }
+    }
 
     try {
-      currentSong.value = song
-      
       const url = await fetchPlayUrl(song.id)
       
       if (!url) {
         return
       }
 
-      playbackState.value = PlaybackState.PLAYING
-      currentTime.value = 0
+      playUrl.value = url
+      playUrlExpireTime.value = Date.now() + 9 * 60 * 1000
       
-      if (playMode.value === 'sequence' && playlist.value.length > 0) {
-        currentIndex.value = playlist.value.findIndex(s => s.id === song.id)
-      } else if (playMode.value === 'random') {
-        if (randomPlaylist.value.length === 0) {
-          generateRandomPlaylist()
-        } else {
-          const idx = randomPlaylist.value.findIndex(s => s.id === song.id)
-          if (idx !== -1) {
-            randomIndex.value = idx
-          }
-        }
+      playbackState.value = PlaybackState.BUFFERING
+      
+      if (wasPlaying) {
+        resume()
       }
     } catch (error) {
       console.error('播放歌曲失败:', error)
-      if (playbackState.value === PlaybackState.SWITCHING) {
-        playbackState.value = previousState
-      }
+      playbackState.value = PlaybackState.ERROR
     }
   }
 
-  function togglePlay() {
+  async function togglePlay() {
     if (playbackState.value === PlaybackState.PLAYING) {
       pause()
     } else if (playbackState.value === PlaybackState.PAUSED) {
       resume()
     } else if (canPlay.value) {
       resume()
-    } else {
-      ensureValidPlayUrl().then(() => {
+    } else if (currentSong.value) {
+      // 如果有当前歌曲但没有有效播放链接，先获取播放链接
+      try {
+        await ensureValidPlayUrl()
         if (canPlay.value) {
           resume()
         }
-      })
+      } catch (error) {
+        console.error('获取播放链接失败:', error)
+      }
     }
   }
 
@@ -249,8 +495,18 @@ export const usePlayerStore = defineStore('player', () => {
 
   function setCanPlay() {
     if (playbackState.value === PlaybackState.BUFFERING || 
-        playbackState.value === PlaybackState.LOADING) {
+        playbackState.value === PlaybackState.LOADING_DATA) {
       playbackState.value = PlaybackState.PLAYING
+    }
+  }
+
+  function setPlaying() {
+    playbackState.value = PlaybackState.PLAYING
+  }
+
+  function setPaused() {
+    if (playbackState.value === PlaybackState.PLAYING) {
+      playbackState.value = PlaybackState.PAUSED
     }
   }
 
@@ -376,6 +632,9 @@ export const usePlayerStore = defineStore('player', () => {
     randomIndex.value = -1
     loadProgress.value = 0
     loadError.value = null
+    loadErrorKey.value = null
+    wasPlayingBeforeError = false
+    networkRetryCount.value = 0
   }
 
   return {
@@ -393,6 +652,7 @@ export const usePlayerStore = defineStore('player', () => {
     playMode,
     loadProgress,
     loadError,
+    loadErrorKey,
     hasValidPlayUrl,
     canPlay,
     isLoading,
@@ -406,6 +666,8 @@ export const usePlayerStore = defineStore('player', () => {
     stop,
     setBuffering,
     setCanPlay,
+    setPlaying,
+    setPaused,
     setCurrentTime,
     setDuration,
     setVolume,
@@ -416,6 +678,12 @@ export const usePlayerStore = defineStore('player', () => {
     playNext,
     playPrevious,
     clearPlayer,
-    cancelCurrentLoad
+    cancelCurrentLoad,
+    initBackgroundPlayback,
+    cleanupBackgroundPlayback,
+    initNetworkListener,
+    cleanupNetworkListener,
+    audioResetKey,
+    resetAudioElement
   }
 })

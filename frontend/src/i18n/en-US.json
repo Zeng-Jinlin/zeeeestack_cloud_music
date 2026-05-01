@@ -34,7 +34,10 @@
     "sequence": "Sequence",
     "random": "Shuffle",
     "single": "Repeat One",
-    "modeChanged": "Switched to {mode}"
+    "modeChanged": "Switched to {mode}",
+    "loadingData": "Requesting data...",
+    "bufferingAudio": "Buffering audio...",
+    "switchingSong": "Switching song..."
   },
   "notifications": {
     "networkError": "Network connection failed, please check your network or backend service",

@@ -38,16 +38,18 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRoute } from 'vue-router'
 import MusicPlayer from '@/components/MusicPlayer.vue'
 import logoSvg from '@/assets/logo.svg'
 import { setLanguage, i18n, SUPPORTED_LANGUAGES } from '@/i18n'
 import { updateDocumentTitle } from '@/router'
+import { usePlayerStore } from '@/stores/playerStore'
 
 const $q = useQuasar()
 const route = useRoute()
+const playerStore = usePlayerStore()
 const currentLang = ref(i18n.global.locale.value)
 const supportedLanguages = SUPPORTED_LANGUAGES
 
@@ -63,6 +65,11 @@ watch(() => i18n.global.locale.value, () => {
 
 onMounted(() => {
   $q.dark.set(false)
+  playerStore.initNetworkListener()
+})
+
+onUnmounted(() => {
+  playerStore.cleanupNetworkListener()
 })
 </script>
 

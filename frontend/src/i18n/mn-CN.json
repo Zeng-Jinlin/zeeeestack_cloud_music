@@ -34,7 +34,10 @@
     "sequence": "Дараалал",
     "random": "Санааргүй",
     "single": "Нэг дууг давтах",
-    "modeChanged": "{mode} руу шилжүүллээ"
+    "modeChanged": "{mode} руу шилжүүллээ",
+    "loadingData": "Өгөгдөл хүсэж байна...",
+    "bufferingAudio": "Дуу хоолой буферлэж байна...",
+    "switchingSong": "Дуу сонгож байна..."
   },
   "notifications": {
     "networkError": "Сүлжээний холболт амжилтгүй боллоо. Та өөрийн сүлжээ эсвэл backend үйлчилгээг шалгана уу.",

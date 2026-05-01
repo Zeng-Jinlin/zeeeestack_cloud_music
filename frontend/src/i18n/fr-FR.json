@@ -34,7 +34,10 @@
     "sequence": "Séquence",
     "random": "Aléatoire",
     "single": "Répéter une",
-    "modeChanged": "Passé à {mode}"
+    "modeChanged": "Passé à {mode}",
+    "loadingData": "Demande de données...",
+    "bufferingAudio": "Tamponnage audio...",
+    "switchingSong": "Changement de chanson..."
   },
   "notifications": {
     "networkError": "Échec de la connexion réseau, veuillez vérifier votre réseau ou le service backend",
