@@ -75,7 +75,7 @@ export const usePlayerStore = defineStore('player', () => {
   const preloadProgress = ref(0)
   const nextSongPreloaded = ref(false)
   let preloadTimer = null
-  const PRELOAD_DELAY = 2000
+  const PRELOAD_DELAY = 500
 
   const hasValidPlayUrl = computed(() => {
     if (!playUrl.value) return false
@@ -501,11 +501,17 @@ export const usePlayerStore = defineStore('player', () => {
         if (preloadedData && preloadedData.url) {
           playUrl.value = preloadedData.url
           playUrlExpireTime.value = Date.now() + 9 * 60 * 1000
+          
+          const preloadedAudio = preloadService.getPreloadedAudioElement()
+          if (preloadedAudio) {
+            preloadedAudio.currentTime = 0
+          }
+          
           preloadService.reset()
           preloadProgress.value = 0
           nextSongPreloaded.value = false
 
-          playbackState.value = PlaybackState.BUFFERING
+          playbackState.value = PlaybackState.PLAYING
 
           if (wasPlaying) {
             resume()

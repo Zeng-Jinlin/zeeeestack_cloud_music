@@ -1,6 +1,6 @@
 import { musicService } from './musicService'
 
-const PRELOAD_PERCENT = 0.2
+const PRELOAD_PERCENT = 0.5
 const PRELOAD_CACHE_KEY = 'preloaded_audio_cache'
 const PRELOAD_STATUS_KEY = 'preload_status'
 
@@ -20,6 +20,7 @@ class PreloadService {
     this.preloadState = PreloadState.IDLE
     this.preloadAbortController = null
     this.preloadedUrl = null
+    this.preloadedAudioElement = null
   }
 
   async preloadNextSong(song, playlist, playMode, currentIndex) {
@@ -54,35 +55,70 @@ class PreloadService {
       if (response && response.playUrl) {
         this.preloadedUrl = response.playUrl
         const audio = new Audio()
+        audio.crossOrigin = 'anonymous'
         
         const result = await new Promise((resolve, reject) => {
           const timeout = setTimeout(() => {
             audio.src = ''
             reject(new Error('Preload timeout'))
-          }, 30000)
+          }, 45000)
 
-          audio.addEventListener('loadeddata', () => {
+          const onCanPlay = () => {
             clearTimeout(timeout)
             if (audio.buffered.length > 0) {
               const bufferedEnd = audio.buffered.end(audio.buffered.length - 1)
               const duration = audio.duration || 1
               const loadedPercent = Math.min(bufferedEnd / duration, 1)
               
-              if (loadedPercent >= PRELOAD_PERCENT || audio.readyState >= 3) {
-                this.preloadProgress = 100
-                this.preloadState = PreloadState.COMPLETED
-                resolve({
-                  songId: nextSong.id,
-                  url: response.playUrl,
-                  audioElement: audio,
-                  preloadPercent: loadedPercent
-                })
-              }
+              this.preloadProgress = 100
+              this.preloadState = PreloadState.COMPLETED
+              this.preloadedAudioElement = audio
+              resolve({
+                songId: nextSong.id,
+                url: response.playUrl,
+                audioElement: audio,
+                preloadPercent: loadedPercent
+              })
             }
-          }, { once: true })
+          }
+
+          const onCanPlayThrough = () => {
+            clearTimeout(timeout)
+            this.preloadProgress = 100
+            this.preloadState = PreloadState.COMPLETED
+            this.preloadedAudioElement = audio
+            resolve({
+              songId: nextSong.id,
+              url: response.playUrl,
+              audioElement: audio,
+              preloadPercent: 1
+            })
+          }
+
+          const onLoadedMetadata = () => {
+            if (audio.readyState >= 3) {
+              clearTimeout(timeout)
+              this.preloadProgress = 100
+              this.preloadState = PreloadState.COMPLETED
+              this.preloadedAudioElement = audio
+              resolve({
+                songId: nextSong.id,
+                url: response.playUrl,
+                audioElement: audio,
+                preloadPercent: 1
+              })
+            }
+          }
+
+          audio.addEventListener('canplay', onCanPlay, { once: true })
+          audio.addEventListener('canplaythrough', onCanPlayThrough, { once: true })
+          audio.addEventListener('loadedmetadata', onLoadedMetadata, { once: true })
 
           audio.addEventListener('error', (e) => {
             clearTimeout(timeout)
+            audio.removeEventListener('canplay', onCanPlay)
+            audio.removeEventListener('canplaythrough', onCanPlayThrough)
+            audio.removeEventListener('loadedmetadata', onLoadedMetadata)
             reject(e)
           }, { once: true })
 
@@ -93,10 +129,14 @@ class PreloadService {
               const loadedPercent = Math.min(bufferedEnd / duration, 1)
               this.preloadProgress = Math.round(loadedPercent * 100)
               
-              if (loadedPercent >= PRELOAD_PERCENT || audio.readyState >= 3) {
+              if (loadedPercent >= PRELOAD_PERCENT) {
                 clearTimeout(timeout)
+                audio.removeEventListener('canplay', onCanPlay)
+                audio.removeEventListener('canplaythrough', onCanPlayThrough)
+                audio.removeEventListener('loadedmetadata', onLoadedMetadata)
                 this.preloadProgress = 100
                 this.preloadState = PreloadState.COMPLETED
+                this.preloadedAudioElement = audio
                 resolve({
                   songId: nextSong.id,
                   url: response.playUrl,
@@ -126,6 +166,7 @@ class PreloadService {
       console.error('Preload failed:', error)
       this.preloadState = PreloadState.FAILED
       this.preloadedData = null
+      this.preloadedAudioElement = null
       return null
     }
   }
@@ -176,6 +217,10 @@ class PreloadService {
       this.preloadAbortController.abort()
       this.preloadAbortController = null
     }
+    if (this.preloadedAudioElement) {
+      this.preloadedAudioElement.src = ''
+      this.preloadedAudioElement = null
+    }
     this.preloadProgress = 0
     this.preloadState = PreloadState.IDLE
   }
@@ -200,6 +245,10 @@ class PreloadService {
 
   getPreloadedData() {
     return this.preloadedData
+  }
+
+  getPreloadedAudioElement() {
+    return this.preloadedAudioElement
   }
 
   isPreloaded(songId) {
