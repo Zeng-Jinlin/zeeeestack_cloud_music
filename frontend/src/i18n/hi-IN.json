@@ -37,7 +37,8 @@
     "modeChanged": "{mode} में स्विच किया गया",
     "loadingData": "डेटा का अनुरोध कर रहा है...",
     "bufferingAudio": "ऑडियो बफरिंग...",
-    "switchingSong": "गाना बदल रहा है..."
+    "switchingSong": "गाना बदल रहा है...",
+    "nextPreloaded": "अगला तैयार"
   },
   "notifications": {
     "networkError": "नेटवर्क कनेक्शन विफल, कृपया अपना नेटवर्क या बैकएंड सेवा जांचें",

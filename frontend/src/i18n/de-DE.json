@@ -37,7 +37,8 @@
     "modeChanged": "Wechseln zu {mode}",
     "loadingData": "Daten anfordern...",
     "bufferingAudio": "Audio puffern...",
-    "switchingSong": "Lied wechseln..."
+    "switchingSong": "Lied wechseln...",
+    "nextPreloaded": "Nächster bereit"
   },
   "notifications": {
     "networkError": "Netzwerkverbindung fehlgeschlagen, bitte überprüfen Sie Ihr Netzwerk oder den Backend-Dienst",

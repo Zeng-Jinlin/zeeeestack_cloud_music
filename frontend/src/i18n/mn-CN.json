@@ -37,7 +37,8 @@
     "modeChanged": "{mode} руу шилжүүллээ",
     "loadingData": "Өгөгдөл хүсэж байна...",
     "bufferingAudio": "Дуу хоолой буферлэж байна...",
-    "switchingSong": "Дуу сонгож байна..."
+    "switchingSong": "Дуу сонгож байна...",
+    "nextPreloaded": "Дараах бэлтгэгдсэн"
   },
   "notifications": {
     "networkError": "Сүлжээний холболт амжилтгүй боллоо. Та өөрийн сүлжээ эсвэл backend үйлчилгээг шалгана уу.",

@@ -37,7 +37,8 @@
     "modeChanged": "Cambiado a {mode}",
     "loadingData": "Solicitando datos...",
     "bufferingAudio": "Almacenando audio en búfer...",
-    "switchingSong": "Cambiando canción..."
+    "switchingSong": "Cambiando canción...",
+    "nextPreloaded": "Siguiente listo"
   },
   "notifications": {
     "networkError": "Error de conexión de red, por favor verifique su red o servicio backend",

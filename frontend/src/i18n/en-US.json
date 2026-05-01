@@ -37,7 +37,8 @@
     "modeChanged": "Switched to {mode}",
     "loadingData": "Requesting data...",
     "bufferingAudio": "Buffering audio...",
-    "switchingSong": "Switching song..."
+    "switchingSong": "Switching song...",
+    "nextPreloaded": "Next ready"
   },
   "notifications": {
     "networkError": "Network connection failed, please check your network or backend service",

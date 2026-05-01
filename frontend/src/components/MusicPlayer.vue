@@ -71,7 +71,7 @@
             />
             <span class="time-text">{{ formatTime(playerStore.duration) }}</span>
           </div>
-          
+
           <div v-if="!isMobile" class="control-buttons">
             <q-btn
               unelevated

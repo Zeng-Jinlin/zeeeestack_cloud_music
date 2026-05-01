@@ -37,7 +37,8 @@
     "modeChanged": "Beralih ke {mode}",
     "loadingData": "Meminta data...",
     "bufferingAudio": "Muffang audio...",
-    "switchingSong": "Mengganti lagu..."
+    "switchingSong": "Mengganti lagu...",
+    "nextPreloaded": "Berikutnya siap"
   },
   "notifications": {
     "networkError": "Koneksi jaringan gagal, silakan periksa jaringan Anda atau layanan backend",

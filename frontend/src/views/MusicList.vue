@@ -138,12 +138,17 @@ const defaultCover = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53
 
 const filteredMusicList = computed(() => {
   let result = [...musicList.value]
-  
+
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    result = result.filter(song => song.title.toLowerCase().includes(query))
+    result = result.filter(song => {
+      const titleMatch = song.title.toLowerCase().includes(query)
+      const translatedTitle = translatedTitles.value[song.id]
+      const translatedMatch = translatedTitle && translatedTitle.toLowerCase().includes(query)
+      return titleMatch || translatedMatch
+    })
   }
-  
+
   const [sortBy, sortOrder] = sortOption.value.split('-')
   result.sort((a, b) => {
     if (sortBy === 'name') {
@@ -156,7 +161,7 @@ const filteredMusicList = computed(() => {
       return sortOrder === 'asc' ? dateA - dateB : dateB - dateA
     }
   })
-  
+
   return result
 })
 

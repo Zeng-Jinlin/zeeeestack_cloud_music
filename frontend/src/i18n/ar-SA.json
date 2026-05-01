@@ -37,7 +37,8 @@
     "modeChanged": "تم التغيير إلى {mode}",
     "loadingData": "جارٍ طلب البيانات...",
     "bufferingAudio": "جارٍ تخزين الصوت في ذاكرة التخزين المؤقت...",
-    "switchingSong": "جارٍ تبديل الأغنية..."
+    "switchingSong": "جارٍ تبديل الأغنية...",
+    "nextPreloaded": "التالي جاهز"
   },
   "notifications": {
     "networkError": "فشل الاتصال بالشبكة، يرجى التحقق من شبكتك أو خدمة الخلفية",

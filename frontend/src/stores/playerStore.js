@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import { Notify } from 'quasar'
 import { i18n } from '@/i18n'
 import { musicService } from '@/services/musicService'
+import { preloadService, PreloadState } from '@/services/preloadService'
 
 const PlaybackState = {
   IDLE: 'idle',
@@ -69,6 +70,12 @@ export const usePlayerStore = defineStore('player', () => {
   let networkRetryTimer = null
   const NETWORK_RETRY_BASE_DELAY = 1000
   const NETWORK_RETRY_MAX_DELAY = 30000
+
+  const preloadEnabled = ref(true)
+  const preloadProgress = ref(0)
+  const nextSongPreloaded = ref(false)
+  let preloadTimer = null
+  const PRELOAD_DELAY = 2000
 
   const hasValidPlayUrl = computed(() => {
     if (!playUrl.value) return false
@@ -245,6 +252,66 @@ export const usePlayerStore = defineStore('player', () => {
     isNetworkOffline = false
     networkRetryCount.value = 0
   }
+
+  function schedulePreload() {
+    if (!preloadEnabled.value) return
+    if (preloadTimer) {
+      clearTimeout(preloadTimer)
+    }
+    preloadTimer = setTimeout(() => {
+      startPreload()
+    }, PRELOAD_DELAY)
+  }
+
+  async function startPreload() {
+    if (!currentSong.value || playlist.value.length === 0) return
+    if (playMode.value === 'single') return
+
+    const nextSongData = preloadService.getNextSong(
+      currentSong.value,
+      playlist.value,
+      playMode.value,
+      currentIndex.value
+    )
+
+    if (!nextSongData) return
+
+    try {
+      const result = await preloadService.preloadNextSong(
+        currentSong.value,
+        playlist.value,
+        playMode.value,
+        currentIndex.value
+      )
+
+      if (result) {
+        nextSongPreloaded.value = true
+        preloadProgress.value = 100
+      } else {
+        nextSongPreloaded.value = false
+        preloadProgress.value = 0
+      }
+    } catch (error) {
+      console.error('Preload error:', error)
+      nextSongPreloaded.value = false
+      preloadProgress.value = 0
+    }
+  }
+
+  function cancelPreload() {
+    if (preloadTimer) {
+      clearTimeout(preloadTimer)
+      preloadTimer = null
+    }
+    preloadService.cancelPreload()
+    nextSongPreloaded.value = false
+    preloadProgress.value = 0
+  }
+
+  function clearPreloadOnPlaylistChange() {
+    cancelPreload()
+    preloadService.clearAll()
+  }
   
   function resetAudioElement() {
     audioResetKey.value++
@@ -401,20 +468,20 @@ export const usePlayerStore = defineStore('player', () => {
       return
     }
 
-    cancelCurrentLoad()
-    
+    cancelPreload()
+
     const wasPlaying = playbackState.value === PlaybackState.PLAYING
-    
+
     playbackState.value = PlaybackState.SWITCHING
     loadError.value = null
     loadErrorKey.value = null
     loadProgress.value = 0
-    
+
     currentTime.value = 0
     duration.value = 0
-    
+
     currentSong.value = song
-    
+
     if (playMode.value === 'sequence' && playlist.value.length > 0) {
       currentIndex.value = playlist.value.findIndex(s => s.id === song.id)
     } else if (playMode.value === 'random') {
@@ -429,20 +496,41 @@ export const usePlayerStore = defineStore('player', () => {
     }
 
     try {
+      if (preloadService.isPreloaded(song.id)) {
+        const preloadedData = preloadService.getPreloadedData()
+        if (preloadedData && preloadedData.url) {
+          playUrl.value = preloadedData.url
+          playUrlExpireTime.value = Date.now() + 9 * 60 * 1000
+          preloadService.reset()
+          preloadProgress.value = 0
+          nextSongPreloaded.value = false
+
+          playbackState.value = PlaybackState.BUFFERING
+
+          if (wasPlaying) {
+            resume()
+          }
+          schedulePreload()
+          return
+        }
+      }
+
       const url = await fetchPlayUrl(song.id)
-      
+
       if (!url) {
         return
       }
 
       playUrl.value = url
       playUrlExpireTime.value = Date.now() + 9 * 60 * 1000
-      
+
       playbackState.value = PlaybackState.BUFFERING
-      
+
       if (wasPlaying) {
         resume()
       }
+
+      schedulePreload()
     } catch (error) {
       console.error('播放歌曲失败:', error)
       playbackState.value = PlaybackState.ERROR
@@ -530,8 +618,9 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function setPlaylist(songs) {
+    clearPreloadOnPlaylistChange()
     playlist.value = songs
-    
+
     if (playMode.value === 'random') {
       generateRandomPlaylist()
     }
@@ -620,6 +709,8 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   function clearPlayer() {
+    cancelPreload()
+    clearPreloadOnPlaylistChange()
     cancelCurrentLoad()
     currentSong.value = null
     playUrl.value = ''
@@ -635,6 +726,7 @@ export const usePlayerStore = defineStore('player', () => {
     loadErrorKey.value = null
     wasPlayingBeforeError = false
     networkRetryCount.value = 0
+    preloadService.clearAll()
   }
 
   return {
@@ -657,6 +749,9 @@ export const usePlayerStore = defineStore('player', () => {
     canPlay,
     isLoading,
     isPlaying,
+    preloadEnabled,
+    preloadProgress,
+    nextSongPreloaded,
     fetchPlayUrl,
     ensureValidPlayUrl,
     playSong,
@@ -684,6 +779,10 @@ export const usePlayerStore = defineStore('player', () => {
     initNetworkListener,
     cleanupNetworkListener,
     audioResetKey,
-    resetAudioElement
+    resetAudioElement,
+    schedulePreload,
+    cancelPreload,
+    clearPreloadOnPlaylistChange,
+    PreloadState
   }
 })

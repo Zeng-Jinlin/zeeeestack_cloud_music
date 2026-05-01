@@ -37,7 +37,8 @@
     "modeChanged": "Переключено на {mode}",
     "loadingData": "Запрос данных...",
     "bufferingAudio": "Буферизация аудио...",
-    "switchingSong": "Переключение песни..."
+    "switchingSong": "Переключение песни...",
+    "nextPreloaded": "Следующий готов"
   },
   "notifications": {
     "networkError": "Сбой сетевого подключения, пожалуйста, проверьте вашу сеть или бэкенд-сервис",
