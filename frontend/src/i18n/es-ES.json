@@ -38,7 +38,8 @@
     "loadingData": "Solicitando datos...",
     "bufferingAudio": "Almacenando audio en búfer...",
     "switchingSong": "Cambiando canción...",
-    "nextPreloaded": "Siguiente listo"
+    "nextPreloaded": "Siguiente listo",
+    "nextSongPreview": "Siguiente:"
   },
   "notifications": {
     "networkError": "Error de conexión de red, por favor verifique su red o servicio backend",

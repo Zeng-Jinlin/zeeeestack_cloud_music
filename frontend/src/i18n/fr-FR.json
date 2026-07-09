@@ -38,7 +38,8 @@
     "loadingData": "Demande de données...",
     "bufferingAudio": "Tamponnage audio...",
     "switchingSong": "Changement de chanson...",
-    "nextPreloaded": "Suivant prêt"
+    "nextPreloaded": "Suivant prêt",
+    "nextSongPreview": "Suivant:"
   },
   "notifications": {
     "networkError": "Échec de la connexion réseau, veuillez vérifier votre réseau ou le service backend",

@@ -54,21 +54,49 @@
         </div>
 
         <div class="controls-section">
+          <transition 
+            name="next-song-preview"
+            @leave="onLeaveStart"
+            @after-leave="onLeaveEnd"
+          >
+            <div 
+              v-if="showNextSongPreview" 
+              class="next-song-preview"
+              :key="showNextSongPreview"
+            >
+              <q-icon name="queue_music" size="16px" class="preview-icon" />
+              <span class="preview-text">{{ nextSongPreviewText }}</span>
+            </div>
+          </transition>
+
           <div class="progress-container">
-            <span class="time-text">{{ formatTime(playerStore.currentTime) }}</span>
-            <q-slider
-              v-model="seekTime"
-              :max="playerStore.duration"
-              @input="onSliderInput"
-              @change="onSliderChange"
-              @mousedown="onSliderStart"
-              @touchstart="onSliderStart"
-              @mouseup="onSliderEnd"
-              @touchend="onSliderEnd"
-              class="progress-slider"
-              color="#FFB6C1"
-              track-color="#FFE4E9"
-            />
+            <span class="time-text">{{ formatTime(displayTime) }}</span>
+            <div 
+              class="custom-progress-bar" 
+              @mousedown="onProgressBarMouseDown"
+              @touchstart="onProgressBarMouseDown"
+              ref="progressBarRef"
+            >
+              <div 
+                class="progress-track"
+                :class="{ 'is-playing': playerStore.isPlaying }"
+                :style="{ width: progressPercent + '%' }"
+              ></div>
+              <div 
+                class="progress-thumb"
+                :class="{ 'is-playing': playerStore.isPlaying }"
+                :style="{ left: progressPercent + '%' }"
+              >
+                <div class="thumb-glow"></div>
+              </div>
+              <div 
+                v-if="isDragging.value" 
+                class="preview-tooltip"
+                :style="{ left: Math.min(progressPercent, 95) + '%' }"
+              >
+                {{ formatTime(seekTime.value) }}
+              </div>
+            </div>
             <span class="time-text">{{ formatTime(playerStore.duration) }}</span>
           </div>
 
@@ -158,6 +186,7 @@ import { usePlayerStore } from '@/stores/playerStore'
 import SongDetail from './SongDetail.vue'
 import { Notify } from 'quasar'
 import { isMobileDevice } from '@/utils/device'
+import { getGlobalTranslations } from '@/services/translateService'
 
 const playerStore = usePlayerStore()
 const { t } = useI18n()
@@ -167,15 +196,113 @@ const volumeValue = ref(playerStore.volume)
 let loadingNotify = null
 
 const isMobile = computed(() => isMobileDevice())
+const globalTranslations = getGlobalTranslations()
 
 const showVolumeSlider = ref(false)
 let volumeHideTimer = null
 const VOLUME_HIDE_DELAY = 3000
 
-let isSeeking = false
+const isDragging = ref(false)
+const dragStartTime = ref(0)
+const DRAG_THRESHOLD_MS = 150
+let dragTimeout = null
+
 let isRetrying = false
 let lastErrorKey = null
 let currentFadeOperation = null
+
+const progressBarRef = ref(null)
+
+const displayTime = computed(() => {
+  return isDragging.value ? seekTime.value : playerStore.currentTime
+})
+
+const progressPercent = computed(() => {
+  if (!playerStore.duration || playerStore.duration <= 0) return 0
+  const time = isDragging.value ? seekTime.value : playerStore.currentTime
+  return Math.min(100, Math.max(0, (time / playerStore.duration) * 100))
+})
+
+const PREVIEW_THRESHOLD = 20
+const showNextSongPreview = ref(false)
+const nextSongInfo = ref({ title: '', translation: '' })
+let previewUpdateTimer = null
+
+const remainingTime = computed(() => {
+  if (!playerStore.duration || !playerStore.currentTime) return 0
+  return Math.max(0, playerStore.duration - playerStore.currentTime)
+})
+
+const isInPreviewZone = computed(() => {
+  return playerStore.isPlaying && 
+         remainingTime.value > 0 && 
+         remainingTime.value <= PREVIEW_THRESHOLD
+})
+
+const nextSongPreviewText = computed(() => {
+  if (!nextSongInfo.value.title) return ''
+  if (nextSongInfo.value.translation) {
+    return `${t('player.nextSongPreview')}${nextSongInfo.value.title}(${nextSongInfo.value.translation})`
+  }
+  return `${t('player.nextSongPreview')}${nextSongInfo.value.title}`
+})
+
+function getNextSongInfo() {
+  const playlist = playerStore.playlist
+  const currentIndex = playerStore.currentIndex
+  const playMode = playerStore.playMode
+  
+  if (!playlist || playlist.length === 0) {
+    return { title: '', translation: '' }
+  }
+  
+  if (playMode === 'single') {
+    return {
+      title: playerStore.currentSong?.title || '',
+      translation: globalTranslations.value[playerStore.currentSong?.id] || ''
+    }
+  }
+  
+  let nextIndex
+  let nextPlaylist
+  
+  if (playMode === 'random') {
+    nextPlaylist = playerStore.randomPlaylist || []
+    if (nextPlaylist.length === 0) return { title: '', translation: '' }
+    const currentRandomIndex = playerStore.randomIndex
+    nextIndex = currentRandomIndex + 1
+    if (nextIndex >= nextPlaylist.length) nextIndex = 0
+    const nextSong = nextPlaylist[nextIndex]
+    return {
+      title: nextSong?.title || '',
+      translation: globalTranslations.value[nextSong?.id] || ''
+    }
+  }
+  
+  nextIndex = currentIndex + 1
+  if (nextIndex >= playlist.length) nextIndex = 0
+  const nextSong = playlist[nextIndex]
+  return {
+    title: nextSong?.title || '',
+    translation: globalTranslations.value[nextSong?.id] || ''
+  }
+}
+
+function updateNextSongPreview() {
+  const info = getNextSongInfo()
+  nextSongInfo.value = info
+  
+  if (isInPreviewZone.value) {
+    showNextSongPreview.value = !!info.title
+  } else {
+    showNextSongPreview.value = false
+  }
+}
+
+function hideNextSongPreview() {
+  showNextSongPreview.value = false
+  nextSongInfo.value = { title: '', translation: '' }
+}
 
 const loadingMessage = computed(() => {
   switch (playerStore.playbackState) {
@@ -299,9 +426,10 @@ function formatTime(seconds) {
 
 function onTimeUpdate() {
   if (!audioRef.value) return
-  if (!isSeeking) {
+  if (!isDragging.value) {
     playerStore.setCurrentTime(audioRef.value.currentTime)
     seekTime.value = audioRef.value.currentTime
+    updateNextSongPreview()
   }
 }
 
@@ -333,6 +461,87 @@ function onPlaying() {
 
 function onPause() {
   playerStore.setPaused()
+}
+
+function onLeaveStart(el) {
+  el.style.animation = 'none'
+}
+
+function onLeaveEnd(el) {
+  el.style.maxHeight = '0'
+  el.style.padding = '0 16px'
+  el.style.marginBottom = '0'
+  el.style.opacity = '0'
+}
+
+function calculateSeekTime(event) {
+  if (!progressBarRef.value || !playerStore.duration || playerStore.duration <= 0) {
+    return 0
+  }
+  
+  const rect = progressBarRef.value.getBoundingClientRect()
+  const clientX = event.clientX || (event.touches && event.touches[0]?.clientX) || 0
+  const percent = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width))
+  
+  return percent * playerStore.duration
+}
+
+function onProgressBarMouseDown(e) {
+  // 阻止默认行为防止页面滚动
+  e.preventDefault()
+  
+  isDragging.value = true
+  dragStartTime.value = Date.now()
+  
+  seekTime.value = calculateSeekTime(e)
+  
+  document.addEventListener('mousemove', onProgressBarMouseMove)
+  document.addEventListener('mouseup', onProgressBarMouseUp)
+  document.addEventListener('touchmove', onProgressBarMouseMove, { passive: false })
+  document.addEventListener('touchend', onProgressBarMouseUp)
+  document.addEventListener('touchcancel', onProgressBarMouseUp)
+}
+
+function onProgressBarMouseMove(e) {
+  if (!isDragging.value) return
+  
+  e.preventDefault()
+  
+  seekTime.value = calculateSeekTime(e)
+  
+  // 更新最后操作时间
+  lastDragTime = Date.now()
+  
+  const now = Date.now()
+  if (now - dragStartTime.value >= DRAG_THRESHOLD_MS) {
+    if (audioRef.value && !isNaN(seekTime.value)) {
+      audioRef.value.currentTime = seekTime.value
+      playerStore.setCurrentTime(seekTime.value)
+    }
+  }
+}
+
+function onProgressBarMouseUp() {
+  if (!isDragging.value) return
+  
+  if (audioRef.value && !isNaN(seekTime.value)) {
+    audioRef.value.currentTime = seekTime.value
+    playerStore.setCurrentTime(seekTime.value)
+  }
+  
+  isDragging.value = false
+  
+  // 清除超时
+  if (dragTimeout) {
+    clearTimeout(dragTimeout)
+    dragTimeout = null
+  }
+  
+  document.removeEventListener('mousemove', onProgressBarMouseMove)
+  document.removeEventListener('mouseup', onProgressBarMouseUp)
+  document.removeEventListener('touchmove', onProgressBarMouseMove)
+  document.removeEventListener('touchend', onProgressBarMouseUp)
+  document.removeEventListener('touchcancel', onProgressBarMouseUp)
 }
 
 function onLoadStart() {
@@ -367,26 +576,7 @@ function onError() {
   }
 }
 
-function onSliderStart() {
-  isSeeking = true
-}
-
-function onSliderEnd() {
-  isSeeking = false
-}
-
-function onSliderInput() {
-}
-
-function onSliderChange() {
-  if (audioRef.value && seekTime.value !== undefined) {
-    audioRef.value.currentTime = seekTime.value
-    playerStore.setCurrentTime(seekTime.value)
-    isSeeking = false
-  }
-}
-
-watch(() => playerStore.isPlaying, async (newVal) => {
+watch(() => playerStore.playbackState, async (newState, oldState) => {
   if (!audioRef.value) return
   
   if (currentFadeOperation) {
@@ -394,13 +584,13 @@ watch(() => playerStore.isPlaying, async (newVal) => {
     currentFadeOperation = null
   }
   
-  if (newVal) {
+  if (newState === playerStore.PlaybackState.PLAYING) {
     audioRef.value.volume = 0
     audioRef.value.play().catch(err => {
       console.error('播放失败:', err)
     })
     await fadeIn(playerStore.volume)
-  } else {
+  } else if (newState === playerStore.PlaybackState.PAUSED && oldState !== playerStore.PlaybackState.SWITCHING) {
     await fadeOut()
     audioRef.value.pause()
   }
@@ -487,8 +677,54 @@ watch(() => playerStore.isMuted, (newVal) => {
 watch(() => playerStore.currentSong, (newSong, oldSong) => {
   if (newSong && newSong.id !== oldSong?.id) {
     seekTime.value = 0
+    hideNextSongPreview()
   }
 })
+
+watch(() => playerStore.playMode, () => {
+  updateNextSongPreview()
+})
+
+watch(() => playerStore.isPlaying, (newVal) => {
+  if (!newVal) {
+    hideNextSongPreview()
+  } else {
+    updateNextSongPreview()
+  }
+})
+
+watch(() => playerStore.currentIndex, () => {
+  hideNextSongPreview()
+})
+
+watch(seekTime, (newVal, oldVal) => {
+  if (Math.abs(newVal - oldVal) > 1) {
+    updateNextSongPreview()
+  }
+})
+
+// 拖动超时保护
+let lastDragTime = 0
+const DRAG_TIMEOUT = 3000
+
+watch(isDragging, (dragging) => {
+  if (dragging) {
+    lastDragTime = Date.now()
+    const checkTimeout = () => {
+      if (isDragging.value) {
+        const elapsed = Date.now() - lastDragTime
+        if (elapsed >= DRAG_TIMEOUT) {
+          isDragging.value = false
+        } else {
+          requestAnimationFrame(checkTimeout)
+        }
+      }
+    }
+    requestAnimationFrame(checkTimeout)
+  }
+})
+
+let handleDocumentMouseUp
 
 onMounted(() => {
   playerStore.initNetworkListener()
@@ -500,6 +736,8 @@ onMounted(() => {
       })
     }
   }
+  
+  // 监听 document 的 mouseup 作为兜底，确保 isSeeking 状态正确
 })
 
 onUnmounted(() => {
@@ -593,25 +831,121 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
-.progress-slider {
+.custom-progress-bar {
   flex: 1;
   min-width: 0;
+  height: 10px;
+  background: #FFE4E9;
+  border-radius: 3px;
+  cursor: pointer;
+  position: relative;
+  overflow: visible;
 }
 
-.progress-slider :deep(.q-slider__thumb) {
-  transition: none !important;
+.custom-progress-bar:hover .progress-track {
+  background: linear-gradient(135deg, #FFF5F7 0%, #FFE4E9 100%);
 }
 
-.progress-slider :deep(.q-slider__thumb-knob) {
-  transition: none !important;
+.progress-track {
+  height: 100%;
+  background: linear-gradient(135deg, #FFF5F7 0%, #FFE4E9 100%);
+  border-radius: 3px;
+  position: relative;
+  transition: background 0.2s ease;
+  overflow: hidden;
 }
 
-.progress-slider :deep(.q-slider__track) {
-  transition: none !important;
+.progress-track.is-playing::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: progressShine 2s linear infinite;
 }
 
-.progress-slider :deep(.q-slider__track--active) {
-  transition: none !important;
+@keyframes progressShine {
+  0% {
+    left: -100%;
+  }
+  100% {
+    left: 100%;
+  }
+}
+
+.progress-thumb {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 10px;
+  height: 10px;
+  background: #FFB6C1;
+  border-radius: 3px;
+  opacity: 1;
+  transition: transform 0.1s ease, box-shadow 0.2s ease;
+}
+
+.thumb-glow {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 20px;
+  height: 20px;
+  background: radial-gradient(circle, rgba(255, 182, 193, 0.6) 0%, transparent 70%);
+  border-radius: 50%;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.custom-progress-bar:hover .thumb-glow,
+.progress-thumb.is-playing .thumb-glow {
+  opacity: 1;
+}
+
+.custom-progress-bar:hover .progress-thumb,
+.progress-thumb.is-playing {
+  transform: translate(-50%, -50%) scale(1.3);
+  box-shadow: 0 0 10px rgba(255, 182, 193, 0.5);
+}
+
+.custom-progress-bar:active .progress-thumb,
+.progress-thumb.is-playing:active {
+  transform: translate(-50%, -50%) scale(1.5);
+  box-shadow: 0 0 15px rgba(255, 182, 193, 0.7);
+}
+
+.preview-tooltip {
+  position: absolute;
+  top: -28px;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #FFFFFF;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  z-index: 100;
+}
+
+.preview-tooltip::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  border-left: 4px solid transparent;
+  border-right: 4px solid transparent;
+  border-top: 4px solid rgba(0, 0, 0, 0.8);
 }
 
 .control-buttons {
@@ -642,17 +976,50 @@ onUnmounted(() => {
   background: #FFE4E9 !important;
   box-shadow: 0 2px 8px rgba(255, 182, 193, 0.25) !important;
   transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.play-btn::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  background: radial-gradient(circle, rgba(255, 182, 193, 0.6) 0%, transparent 70%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  transition: width 0.4s ease, height 0.4s ease;
+}
+
+.play-btn:active::before {
+  width: 150%;
+  height: 150%;
 }
 
 .play-btn:hover,
 .play-btn:focus-visible {
-  transform: scale(1.05);
+  transform: scale(1.08);
   background: #FFD1DC !important;
   box-shadow: 0 4px 12px rgba(255, 182, 193, 0.35) !important;
 }
 
 .play-btn:active {
   transform: scale(1.02);
+}
+
+.play-btn.is-playing {
+  animation: playBtnPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes playBtnPulse {
+  0%, 100% {
+    box-shadow: 0 2px 8px rgba(255, 182, 193, 0.25) !important;
+  }
+  50% {
+    box-shadow: 0 2px 16px rgba(255, 105, 180, 0.4) !important;
+  }
 }
 
 .volume-btn {
@@ -778,6 +1145,121 @@ onUnmounted(() => {
   max-width: 140px;
 }
 
+.next-song-preview {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #FFF5F7 0%, #FFE4E9 100%);
+  border-radius: 20px;
+  box-shadow: 
+    0 0 8px rgba(255, 182, 193, 0.3),
+    0 0 15px rgba(255, 182, 193, 0.2),
+    0 0 25px rgba(255, 182, 193, 0.1);
+  margin-bottom: 8px;
+  position: relative;
+  animation: fogGlow 2s linear infinite;
+}
+
+@keyframes fogGlow {
+  0%, 100% {
+    box-shadow: 
+      0 0 8px rgba(255, 182, 193, 0.3),
+      0 0 15px rgba(255, 182, 193, 0.2),
+      0 0 25px rgba(255, 182, 193, 0.1);
+  }
+  50% {
+    box-shadow: 
+      0 0 12px rgba(255, 182, 193, 0.4),
+      0 0 20px rgba(255, 182, 193, 0.25),
+      0 0 30px rgba(255, 182, 193, 0.15);
+  }
+}
+
+.next-song-preview::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 2px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 182, 193, 0.4),
+    rgba(255, 182, 193, 0.6),
+    rgba(255, 182, 193, 0.4),
+    rgba(255, 182, 193, 0.6),
+    rgba(255, 182, 193, 0.4)
+  );
+  background-size: 200% 100%;
+  animation: borderFlow 2s linear infinite;
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  filter: blur(1px);
+}
+
+@keyframes borderFlow {
+  0% {
+    background-position: 0% 0%;
+  }
+  100% {
+    background-position: 200% 0%;
+  }
+}
+
+.preview-icon {
+  color: #FFB6C1;
+  flex-shrink: 0;
+}
+
+.preview-text {
+  font-size: 13px;
+  color: #616161;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.next-song-preview-enter-active,
+.next-song-preview-leave-active {
+  transition: all 0.3s ease;
+  overflow: hidden;
+}
+
+.next-song-preview-enter-from {
+  opacity: 0;
+  transform: translateY(-10px);
+  max-height: 0;
+  padding: 0 16px;
+  margin-bottom: 0;
+  box-shadow: none;
+}
+
+.next-song-preview-enter-to {
+  opacity: 1;
+  transform: translateY(0);
+  max-height: 50px;
+  padding: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.next-song-preview-leave-from {
+  opacity: 1;
+  transform: translateY(0);
+  max-height: 50px;
+  padding: 8px 16px;
+  margin-bottom: 8px;
+}
+
+.next-song-preview-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
+  max-height: 0;
+  padding: 0 16px;
+  margin-bottom: 0;
+  box-shadow: none;
+}
+
 @media (max-width: 1200px) {
   .player-container {
     grid-template-columns: 240px 1fr 280px;
@@ -865,6 +1347,15 @@ onUnmounted(() => {
   
   .progress-container {
     gap: 8px;
+  }
+  
+  .next-song-preview {
+    padding: 6px 12px;
+    font-size: 12px;
+  }
+  
+  .preview-icon {
+    font-size: 14px;
   }
 }
 

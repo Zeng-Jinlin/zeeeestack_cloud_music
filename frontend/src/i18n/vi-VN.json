@@ -38,7 +38,8 @@
     "loadingData": "Đang yêu cầu dữ liệu...",
     "bufferingAudio": "Đang đệm âm thanh...",
     "switchingSong": "Đang chuyển bài hát...",
-    "nextPreloaded": "Tiếp theo sẵn sàng"
+    "nextPreloaded": "Tiếp theo sẵn sàng",
+    "nextSongPreview": "Tiếp theo:"
   },
   "notifications": {
     "networkError": "Kết nối mạng không thành công, vui lòng kiểm tra mạng của bạn hoặc dịch vụ backend",

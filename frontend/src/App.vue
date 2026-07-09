@@ -112,6 +112,18 @@ onUnmounted(() => {
   background: #FFFFFF;
   box-shadow: 0 2px 12px rgba(255, 182, 193, 0.15);
   border-bottom: 1px solid #FFE4E9;
+  animation: headerSlide 0.4s ease-out;
+}
+
+@keyframes headerSlide {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .app-toolbar {

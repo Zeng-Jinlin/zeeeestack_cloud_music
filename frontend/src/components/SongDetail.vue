@@ -3,6 +3,7 @@
     <q-avatar size="52px" class="song-avatar">
       <div class="cover-container">
         <img 
+          :key="song.id"
           :src="song.coverUrl || defaultCover" 
           class="cover-img"
           :class="{ 'loaded': imageLoaded }"
@@ -11,8 +12,12 @@
       </div>
     </q-avatar>
     <div class="song-info">
-      <div class="song-title">{{ song.title }}</div>
-      <div v-if="translation" class="song-translation">{{ translation }}</div>
+      <transition name="title-slide" mode="out-in">
+        <div :key="song.id + '-title'" class="song-title">{{ song.title }}</div>
+      </transition>
+      <transition name="title-slide" mode="out-in">
+        <div v-if="translation" :key="song.id + '-translation'" class="song-translation">{{ translation }}</div>
+      </transition>
     </div>
   </div>
 </template>
@@ -88,6 +93,8 @@ watch(() => getLanguage(), () => {
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
+  overflow: hidden;
 }
 
 .song-title {
@@ -105,6 +112,24 @@ watch(() => getLanguage(), () => {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.title-slide-enter-active {
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.title-slide-leave-active {
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.title-slide-enter-from {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.title-slide-leave-to {
+  opacity: 0;
+  transform: translateY(-10px);
 }
 
 @media (max-width: 288px) {

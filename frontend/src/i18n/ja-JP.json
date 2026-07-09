@@ -38,7 +38,8 @@
     "loadingData": "データをリクエスト中...",
     "bufferingAudio": "オーディオをバッファリング中...",
     "switchingSong": "曲切り替え中...",
-    "nextPreloaded": "次曲準備完了"
+    "nextPreloaded": "次曲準備完了",
+    "nextSongPreview": "次の曲:"
   },
   "notifications": {
     "networkError": "ネットワーク接続に失敗しました。ネットワークまたはバックエンドサービスを確認してください。",

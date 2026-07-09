@@ -38,7 +38,8 @@
     "loadingData": "Запрос данных...",
     "bufferingAudio": "Буферизация аудио...",
     "switchingSong": "Переключение песни...",
-    "nextPreloaded": "Следующий готов"
+    "nextPreloaded": "Следующий готов",
+    "nextSongPreview": "Следующий:"
   },
   "notifications": {
     "networkError": "Сбой сетевого подключения, пожалуйста, проверьте вашу сеть или бэкенд-сервис",

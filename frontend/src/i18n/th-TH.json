@@ -38,7 +38,8 @@
     "loadingData": "กำลังขอข้อมูล...",
     "bufferingAudio": "กำลังบัฟเฟอร์เสียง...",
     "switchingSong": "กำลังเปลี่ยนเพลง...",
-    "nextPreloaded": "เพลงถัดไปพร้อม"
+    "nextPreloaded": "เพลงถัดไปพร้อม",
+    "nextSongPreview": "ถัดไป:"
   },
   "notifications": {
     "networkError": "การเชื่อมต่อเครือข่ายล้มเหลว โปรดตรวจสอบเครือข่ายหรือบริการแบ็กเอนด์ของคุณ",
