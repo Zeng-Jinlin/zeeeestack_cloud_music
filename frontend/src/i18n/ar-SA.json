@@ -38,7 +38,8 @@
     "loadingData": "جارٍ طلب البيانات...",
     "bufferingAudio": "جارٍ تخزين الصوت في ذاكرة التخزين المؤقت...",
     "switchingSong": "جارٍ تبديل الأغنية...",
-    "nextPreloaded": "التالي جاهز"
+    "nextPreloaded": "التالي جاهز",
+    "nextSongPreview": "التالي:"
   },
   "notifications": {
     "networkError": "فشل الاتصال بالشبكة، يرجى التحقق من شبكتك أو خدمة الخلفية",

@@ -38,7 +38,8 @@
     "loadingData": "Meminta data...",
     "bufferingAudio": "Muffang audio...",
     "switchingSong": "Mengganti lagu...",
-    "nextPreloaded": "Berikutnya siap"
+    "nextPreloaded": "Berikutnya siap",
+    "nextSongPreview": "Berikutnya:"
   },
   "notifications": {
     "networkError": "Koneksi jaringan gagal, silakan periksa jaringan Anda atau layanan backend",

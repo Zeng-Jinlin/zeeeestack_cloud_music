@@ -38,7 +38,8 @@
     "loadingData": "데이터 요청 중...",
     "bufferingAudio": "오디오 버퍼링 중...",
     "switchingSong": "노래 전환 중...",
-    "nextPreloaded": "다음 준비됨"
+    "nextPreloaded": "다음 준비됨",
+    "nextSongPreview": "다음 곡:"
   },
   "notifications": {
     "networkError": "네트워크 연결에 실패했습니다. 네트워크 또는 백엔드 서비스를 확인하세요.",

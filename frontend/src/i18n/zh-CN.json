@@ -38,7 +38,8 @@
     "loadingData": "正在请求数据...",
     "bufferingAudio": "正在缓冲音频资源...",
     "switchingSong": "切换歌曲中...",
-    "nextPreloaded": "下一首已就绪"
+    "nextPreloaded": "下一首已就绪",
+    "nextSongPreview": "即将播放:"
   },
   "notifications": {
     "networkError": "网络连接失败，请检查您的网络或后端服务",

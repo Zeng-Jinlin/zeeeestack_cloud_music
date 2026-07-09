@@ -38,7 +38,8 @@
     "loadingData": "Requesting data...",
     "bufferingAudio": "Buffering audio...",
     "switchingSong": "Switching song...",
-    "nextPreloaded": "Next ready"
+    "nextPreloaded": "Next ready",
+    "nextSongPreview": "Up next:"
   },
   "notifications": {
     "networkError": "Network connection failed, please check your network or backend service",

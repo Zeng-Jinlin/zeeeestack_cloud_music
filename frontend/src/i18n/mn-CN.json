@@ -38,7 +38,8 @@
     "loadingData": "Өгөгдөл хүсэж байна...",
     "bufferingAudio": "Дуу хоолой буферлэж байна...",
     "switchingSong": "Дуу сонгож байна...",
-    "nextPreloaded": "Дараах бэлтгэгдсэн"
+    "nextPreloaded": "Дараах бэлтгэгдсэн",
+    "nextSongPreview": "Дараах:"
   },
   "notifications": {
     "networkError": "Сүлжээний холболт амжилтгүй боллоо. Та өөрийн сүлжээ эсвэл backend үйлчилгээг шалгана уу.",

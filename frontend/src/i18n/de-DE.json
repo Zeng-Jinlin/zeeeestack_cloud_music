@@ -38,7 +38,8 @@
     "loadingData": "Daten anfordern...",
     "bufferingAudio": "Audio puffern...",
     "switchingSong": "Lied wechseln...",
-    "nextPreloaded": "Nächster bereit"
+    "nextPreloaded": "Nächster bereit",
+    "nextSongPreview": "Nächster:"
   },
   "notifications": {
     "networkError": "Netzwerkverbindung fehlgeschlagen, bitte überprüfen Sie Ihr Netzwerk oder den Backend-Dienst",

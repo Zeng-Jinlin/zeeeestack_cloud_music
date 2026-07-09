@@ -93,7 +93,9 @@ export const usePlayerStore = defineStore('player', () => {
   })
 
   const isPlaying = computed(() => {
-    return playbackState.value === PlaybackState.PLAYING
+    return playbackState.value === PlaybackState.PLAYING || 
+           playbackState.value === PlaybackState.SWITCHING ||
+           playbackState.value === PlaybackState.BUFFERING
   })
   
   // 后台播放初始化
@@ -748,6 +750,8 @@ export const usePlayerStore = defineStore('player', () => {
     playlist,
     currentIndex,
     playMode,
+    randomPlaylist,
+    randomIndex,
     loadProgress,
     loadError,
     loadErrorKey,
